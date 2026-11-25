@@ -32,6 +32,7 @@ function setup(replies: ModelReply[], over: Partial<AgentDeps> = {}) {
     execute: vi.fn(async () => BLOCKED),
     takeModelCall: vi.fn(() => true),
     takeTransaction: vi.fn(() => true),
+    busy: () => false,
     ...over,
   };
   const run = (messages: ChatMessage[], mode: "owner" | "challenge" = "owner") =>
@@ -125,6 +126,24 @@ describe("agent run", () => {
     expect(seen[2]!.messages.at(-1)!.role).toBe("system");
   });
 
+  it("sends the order when the model answers from memory without trying", async () => {
+    const { run, deps } = setup([say("Your mandate is revoked, so I will not try."), call("execute_trade", BUY), say("Blocked on-chain.")]);
+    expect((await run(user("Buy $150 of gold"))).message).toBe("Blocked on-chain.");
+    expect(deps.execute).toHaveBeenCalledTimes(1);
+  });
+
+  it("the correction never asks for a substitute when the order cannot be traded", async () => {
+    const { run, seen } = setup([say("I cannot trade BTC."), say("I cannot trade BTC.")]);
+    expect((await run(user("Buy $5 of BTC"))).message).toBe("I cannot trade BTC.");
+    expect(seen[1]!.messages.at(-1)!.content).toMatch(/another asset.*do not trade/i);
+  });
+
+  it("stops the challenge agent after three tool rounds", async () => {
+    const { run, deps } = setup(Array.from({ length: 20 }, () => call("get_mandate", {})));
+    await run(user("loop"), "challenge");
+    expect(deps.mandate).toHaveBeenCalledTimes(3);
+  });
+
   it("corrects at most once", async () => {
     const { run, deps } = setup([call("preflight_trade", BUY), say("no"), say("still no"), say("never")]);
     const result = await run(user("Buy $150 of gold"));
@@ -181,6 +200,13 @@ describe("agent run", () => {
     const result = await run(user("buy 30 times"));
     expect(deps.execute).toHaveBeenCalledTimes(5);
     expect(result.actions[5]!.result).toEqual({ error: "at most 5 transactions per message" });
+  });
+
+  it("sends no transaction while the queue is full", async () => {
+    const { run, deps } = setup([call("execute_trade", BUY), say("ok")], { busy: () => true });
+    expect((await run(user("buy"))).actions[0]!.result).toEqual({ error: "many trades are waiting, try again in a minute" });
+    expect(deps.takeTransaction).not.toHaveBeenCalled();
+    expect(deps.execute).not.toHaveBeenCalled();
   });
 
   it("sends no transaction when the daily budget is used up", async () => {

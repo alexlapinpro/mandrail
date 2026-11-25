@@ -62,5 +62,10 @@ describe("clientIp", () => {
   it("uses the last hop, which the visitor cannot fake", () => {
     expect(ip({ "x-forwarded-for": "6.6.6.6, 1.2.3.4" })).toBe("1.2.3.4");
   });
+  it("uses another header when the proxy needs it", () => {
+    process.env.CLIENT_IP_HEADER = "x-real-ip";
+    expect(ip({ "x-forwarded-for": "9.9.9.9", "x-real-ip": "1.2.3.4" })).toBe("1.2.3.4");
+    delete process.env.CLIENT_IP_HEADER;
+  });
   it("falls back to one shared bucket", () => expect(ip({})).toBe("unknown"));
 });

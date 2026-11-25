@@ -5,7 +5,8 @@
 | Check | How |
 |---|---|
 | Wallet on BSC testnet with a little test BNB | [Faucet](https://www.bnbchain.org/en/testnet-faucet), about 0.01 is enough |
-| Prices are fresh | Press **Refresh risk data**. If the 1h move or the gap is 0.0001% or less, wait a minute and refresh |
+| Prices are fresh | Press **Refresh risk data** shortly before the two breaker steps. The "Set below current" buttons use a tenth of the current value, so a refresh in between does not matter. To be fully safe type `0.0001` and save |
+| Presenter's wallet is in `DEMO_OWNERS` | It keeps its own daily reserve of model calls and transactions |
 | The wallet has no mandate yet, or press **New mandate** | A fresh mandate keeps the numbers below exact |
 | Faucet not used in the last hour | It gives 1,000 test USD per hour |
 | Chat signature | One signature lasts an hour |
@@ -13,6 +14,8 @@
 Screen: 1440 px wide or more, so all three columns are visible.
 
 ## Script
+
+The times fit an edited video. Live, wallet confirmations and model answers add up: skip the jurisdiction and rogue venue rows to stay within three minutes, or create and fund the mandate beforehand.
 
 | Time | Do | Say | Expected |
 |---|---|---|---|
@@ -43,7 +46,7 @@ The model provider filters some wordings such as "ignore all rules". The page th
 |---|---|
 | "too small to set a limit below it" | Refresh the risk data, or type a lower limit by hand |
 | Blocked: risk data stale | Press **Refresh risk data** and send again |
-| The model does not answer | Send again. Check the decisions first, a trade may already be there |
+| The model does not answer | Look at the decisions first, a trade may already be there. If not, send again; the unanswered message is not repeated by itself |
 | The model is down | `/break` and the decisions stay readable; show the BscScan links from [CMC_INTEGRATION.md](CMC_INTEGRATION.md) |
 | Wallet on another network | **Switch to BSC testnet** in the header |
 

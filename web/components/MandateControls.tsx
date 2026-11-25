@@ -10,7 +10,7 @@ import { ASSETS, type AssetSymbol } from "@/lib/assets";
 import { deployment } from "@/lib/deployment";
 import { JURISDICTIONS, parsePercent } from "@/lib/mandateForm";
 import { formatPpm, helperThreshold, parseUsd } from "@/lib/units";
-import { Button, Field, Notice } from "./ui";
+import { Button, Field, Notice, TxLink } from "./ui";
 
 const registry = { address: deployment.mandateRegistry, abi: mandateRegistryAbi } as const;
 const guard = { address: deployment.policyGuard, abi: policyGuardAbi } as const;
@@ -88,7 +88,9 @@ export function MandateControls({ mandate: m, walletBalance }: { mandate: Mandat
       </div>
 
       {(input || tx.error || tx.done) && (
-        <Notice tone={input || tx.error ? "error" : "done"}>{input ?? tx.error ?? tx.done}</Notice>
+        <Notice tone={input || tx.error ? "error" : "done"}>
+          {input ?? tx.error ?? tx.done} {!input && tx.hash && <TxLink hash={tx.hash} />}
+        </Notice>
       )}
 
       {m.active ? (

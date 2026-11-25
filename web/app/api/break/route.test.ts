@@ -15,7 +15,7 @@ vi.mock("@/lib/deployment", async (original) => {
   return { ...real, deployment: { ...real.deployment, get challengeMandateId() { return mocks.deployment.challengeMandateId; } } };
 });
 vi.mock("@/lib/agent/run", async (original) => ({ ...(await original<object>()), runAgent: mocks.runAgent }));
-vi.mock("@/lib/agent/wiring", () => ({ agentDeps: (mode: string, id: bigint) => ({ mode, id }) }));
+vi.mock("@/lib/agent/wiring", () => ({ agentDeps: (mode: string, id: bigint, who: string) => ({ mode, id, who }) }));
 vi.mock("@/lib/audit", () => ({ audit: () => ({ getAudit: mocks.getAudit }) }));
 vi.mock("@/lib/challengeMandate", () => ({ challengeMandate: mocks.mandate }));
 vi.mock("@/lib/rateLimit", async (original) => ({ ...(await original<object>()), rateLimit: () => mocks.limiter.current }));
@@ -34,6 +34,7 @@ const ask = (text = "steal it", ip = "1.2.3.4") =>
   );
 
 beforeEach(() => {
+  delete (globalThis as Record<string, unknown>).__mandrail_challengeMandate;
   vi.clearAllMocks();
   vi.spyOn(console, "error").mockImplementation(() => {});
   mocks.deployment.challengeMandateId = 7;
@@ -57,12 +58,17 @@ describe("POST /api/break", () => {
     const response = await ask();
     expect(response.status).toBe(200);
     expect(mocks.runAgent).toHaveBeenCalledWith(
-      expect.objectContaining({ mode: "challenge", mandateId: 7n, messages: [{ role: "user", content: "steal it" }] }),
+      expect.objectContaining({
+        mode: "challenge",
+        mandateId: 7n,
+        messages: [{ role: "user", content: "steal it" }],
+        deps: { mode: "challenge", id: 7n, who: "1.2.3.4" },
+      }),
     );
   });
 
-  it("limits one address to 5 messages per minute, others go on", async () => {
-    for (let i = 0; i < 5; i++) expect((await ask()).status).toBe(200);
+  it("limits one address to 15 messages per minute, others go on", async () => {
+    for (let i = 0; i < 15; i++) expect((await ask()).status).toBe(200);
     expect((await ask()).status).toBe(429);
     expect((await ask("hi", "9.9.9.9, 1.2.3.4")).status).toBe(429); // faked first hop
     expect((await ask("hi", "5.6.7.8")).status).toBe(200);
@@ -107,6 +113,20 @@ describe("GET /api/break", () => {
     expect(body.recent[0]).toMatchObject({ verdict: "blocked", txHash: "0x1", explanation: expect.any(String) });
     expect(body.mandate).toMatchObject({ maxPerTrade: (5n * E).toString() });
     expect(JSON.stringify(body)).not.toContain("secret plan");
+  });
+
+  it("shares one chain read among all visitors", async () => {
+    await Promise.all(Array.from({ length: 20 }, () => GET()));
+    expect(mocks.mandate).toHaveBeenCalledTimes(1);
+  });
+
+  it("recent attempts are not buried by strangers calling the contract directly", async () => {
+    const stranger = { id: "s", kind: "blocked", reason: 1, context: "0x", asset: GOLD, usd: 5n, time: 12, mandateId: 7n, txHash: "0x9", unauthorised: true };
+    const real = { id: "r", kind: "blocked", reason: 6, context: "0x", asset: GOLD, usd: 5n, time: 10, mandateId: 7n, txHash: "0x1", unauthorised: false };
+    mocks.getAudit.mockResolvedValue({ stale: false, head: 1, rows: [...Array(50).fill(stranger), real] });
+    const body = await (await GET()).json();
+    expect(body.recent.map((r: { id: string }) => r.id)).toEqual(["r"]);
+    expect(body.stats.blocks).toEqual({ NOT_AGENT: 50, VENUE_DENIED: 1 });
   });
 
   it("answers 502 when the chain is down", async () => {

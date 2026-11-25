@@ -10,9 +10,12 @@ import { Notice, Panel, Rail, TxLink, Verdict } from "./ui";
 
 export function AuditFeed({ mandateId }: { mandateId: bigint | null }) {
   const [onlyMine, setOnlyMine] = useState(true);
+  const [showStrangers, setShowStrangers] = useState(false);
   const filter = onlyMine ? mandateId : null;
   const { data, isError } = useAudit(filter);
   const now = useNow();
+  const rows = data?.rows.filter((row) => showStrangers || !row.unauthorised);
+  const strangers = data ? data.rows.filter((row) => row.unauthorised).length + data.hiddenUnauthorised : 0;
 
   return (
     <Panel
@@ -32,9 +35,17 @@ export function AuditFeed({ mandateId }: { mandateId: bigint | null }) {
         </div>
       )}
       {!data && !isError && <p className="text-muted">Reading the chain…</p>}
-      {data?.rows.length === 0 && <p className="text-muted">No trades yet. Ask the agent to buy something.</p>}
+      {rows?.length === 0 && <p className="text-muted">No trades yet. Ask the agent to buy something.</p>}
+      {strangers > 0 && (
+        <p className="mb-3 text-sm text-muted">
+          {strangers} {strangers === 1 ? "attempt" : "attempts"} by unauthorised callers, all blocked.{" "}
+          <button type="button" className="text-signal underline underline-offset-2" onClick={() => setShowStrangers((v) => !v)}>
+            {showStrangers ? "Hide" : "Show"}
+          </button>
+        </p>
+      )}
       <ul className="max-h-[640px] space-y-5 overflow-y-auto pr-1">
-        {data?.rows.map((row) => (
+        {rows?.map((row) => (
           <li key={row.id} className="space-y-1.5">
             <div className="flex flex-wrap items-baseline justify-between gap-x-3">
               <Verdict reason={row.reason} unauthorised={row.unauthorised} />

@@ -45,36 +45,78 @@ interface Deps {
   getDecisions: (from: number, to: number) => Promise<RawDecision[]>;
   blockTime: (block: number) => Promise<number>;
   now: () => number;
+  /** How long a reader waits for a refresh before it gets the rows that are there. */
+  patienceMs?: number;
 }
 
 const CHUNK = 40_000; // the log RPC refuses 60,000
 const OVERLAP = 200; // about 90 s, so a lagging log node cannot lose decisions
 const REFRESH_MS = 3_000;
 const NOT_AGENT = 1;
+const MISSES_BEFORE_DROP = 3;
+const SMALLEST_SPLIT = 2_500;
+
+/** Waits for a refresh, but not longer than a reader should wait. */
+async function isLate(refresh: Promise<void>, patienceMs: number): Promise<boolean> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<boolean>((resolve) => {
+    timer = setTimeout(() => resolve(true), patienceMs);
+  });
+  const late = await Promise.race([refresh.then(() => false), timeout]);
+  clearTimeout(timer);
+  return late;
+}
 
 export function createAudit(deps: Deps): Audit {
   const rows = new Map<string, AuditRow>();
+  const misses = new Map<string, number>();
+  const patienceMs = deps.patienceMs ?? 2_000;
   let cursor = deps.deployBlock;
   let head = 0;
   let stale = false;
   let refreshedAt = -Infinity;
   let inFlight: Promise<void> | null = null;
 
-  async function readChunk(from: number, to: number): Promise<void> {
-    const decisions = await deps.getDecisions(from, to);
-    const complete = await Promise.all(
-      decisions.map(async (d): Promise<AuditRow> => ({
-        ...d,
-        id: `${d.txHash}-${d.logIndex}`,
-        time: d.time ?? (await deps.blockTime(d.blockNumber)),
-        unauthorised: d.reason === NOT_AGENT,
-      })),
-    );
-    // Replace the range, so a decision removed by a reorg does not stay.
-    for (const row of rows.values()) {
-      if (row.blockNumber >= from && row.blockNumber <= to) rows.delete(row.id);
+  /** Halves a range the RPC refuses, for example because it holds too many logs. */
+  async function readDecisions(from: number, to: number): Promise<RawDecision[]> {
+    try {
+      return await deps.getDecisions(from, to);
+    } catch (error) {
+      if (to - from < SMALLEST_SPLIT) throw error;
+      const middle = Math.floor((from + to) / 2);
+      const left = await readDecisions(from, middle);
+      return [...left, ...(await readDecisions(middle + 1, to))];
     }
-    complete.forEach((row) => rows.set(row.id, row));
+  }
+
+  async function readChunk(from: number, to: number): Promise<void> {
+    const decisions = await readDecisions(from, to);
+    const complete = await Promise.all(
+      decisions.map(async (d): Promise<AuditRow> => {
+        const id = `${d.txHash}-${d.logIndex}`;
+        return {
+          ...d,
+          id,
+          time: d.time ?? rows.get(id)?.time ?? (await deps.blockTime(d.blockNumber)),
+          unauthorised: d.reason === NOT_AGENT,
+        };
+      }),
+    );
+    const seen = new Set(complete.map((row) => row.id));
+    for (const row of rows.values()) {
+      if (row.blockNumber < from || row.blockNumber > to || seen.has(row.id)) continue;
+      // A reorg removes a decision for good, a lagging node only for a moment.
+      const count = (misses.get(row.id) ?? 0) + 1;
+      misses.set(row.id, count);
+      if (count >= MISSES_BEFORE_DROP) {
+        rows.delete(row.id);
+        misses.delete(row.id);
+      }
+    }
+    for (const row of complete) {
+      rows.set(row.id, row);
+      misses.delete(row.id);
+    }
   }
 
   async function refresh(): Promise<void> {
@@ -101,12 +143,12 @@ export function createAudit(deps: Deps): Audit {
           inFlight = null;
         });
       }
-      await inFlight;
+      const late = inFlight ? await isLate(inFlight, patienceMs) : false;
       const selected = [...rows.values()]
         .filter((row) => mandateId === undefined || row.mandateId === mandateId)
         .sort((a, b) => b.blockNumber - a.blockNumber || b.logIndex - a.logIndex)
         .slice(0, limit);
-      return { rows: selected, stale, head };
+      return { rows: selected, stale: stale || late, head };
     },
   };
 }

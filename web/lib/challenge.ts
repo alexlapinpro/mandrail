@@ -62,7 +62,7 @@ export function stats(rows: readonly ChallengeRow[], mandate: ChallengeMandate):
   return result;
 }
 
-/** The proxy appends the address it saw, so only the last hop is trustworthy. */
+/** The proxy appends the address it saw, so only the last hop is trustworthy. The header can be changed for a host. */
 export function clientIp(headers: Headers): string {
-  return headers.get("x-forwarded-for")?.split(",").at(-1)?.trim() || "unknown";
+  return headers.get(process.env.CLIENT_IP_HEADER || "x-forwarded-for")?.split(",").at(-1)?.trim() || "unknown";
 }

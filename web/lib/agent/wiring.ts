@@ -7,6 +7,7 @@ import { cmc } from "../cmc";
 import { deployment } from "../deployment";
 import { rateLimit } from "../rateLimit";
 import { execute, preflight } from "../trade";
+import { txQueue } from "../txQueue";
 import { formatPpm, formatUsd, percentToPpm } from "../units";
 import { azureModel } from "./client";
 import type { AgentDeps } from "./run";
@@ -14,11 +15,18 @@ import type { AgentMode } from "./tools";
 
 const DAY_MS = 86_400_000;
 const DAILY = {
-  owner: { models: 500, transactions: 200 },
-  challenge: { models: 300, transactions: 200 },
-  /** Share of one mandate, so one owner cannot use up the limits of all. */
-  mandate: { models: 200, transactions: 80 },
+  /** Strangers with their own mandates, all together and each owner address. Mandates are free, so they do not count. */
+  owners: { models: 500, transactions: 200 },
+  oneOwner: { models: 200, transactions: 80 },
+  /** Reserve of each address in DEMO_OWNERS: strangers cannot use it up before a presentation. */
+  demoOwner: { models: 500, transactions: 200 },
+  challenge: { models: 1000, transactions: 300 },
+  oneVisitor: { models: 60, transactions: 60 },
 } as const;
+const MAX_WAITING_TRADES = 6;
+
+const isDemoOwner = (owner: string): boolean =>
+  (process.env.DEMO_OWNERS ?? "").toLowerCase().split(",").some((entry) => entry.trim() === owner.toLowerCase());
 
 async function marketData(symbol: string): Promise<Record<string, unknown>> {
   const asset = ASSETS[symbol as AssetSymbol];
@@ -68,14 +76,25 @@ async function mandateInfo(id: bigint): Promise<Record<string, unknown>> {
   };
 }
 
-/** The real dependencies of an agent run. The mandate and the signing key are fixed here, on the server. */
-export function agentDeps(mode: AgentMode, mandateId: bigint): AgentDeps {
+/**
+ * The real dependencies of an agent run. The mandate and the signing key are fixed here, on the server.
+ * `who` is the owner's address, or the visitor's network address in the challenge.
+ */
+export function agentDeps(mode: AgentMode, mandateId: bigint, who: string): AgentDeps {
   const key = mode === "owner" ? "agent" : "challenge";
+  const person = who.toLowerCase();
+  const demo = mode === "owner" && isDemoOwner(person);
+
   const take = (kind: "models" | "transactions"): boolean => {
     const limit = rateLimit();
-    if (mode === "owner" && !limit.take(`${kind}-mandate`, `${mandateId}`, DAILY.mandate[kind], DAY_MS).ok) return false;
-    return limit.take(`${kind}-${mode}`, "all", DAILY[mode][kind], DAY_MS).ok;
+    if (demo) return limit.take(`${kind}-demo`, person, DAILY.demoOwner[kind], DAY_MS).ok;
+    const one = mode === "owner" ? DAILY.oneOwner : DAILY.oneVisitor;
+    const all = mode === "owner" ? DAILY.owners : DAILY.challenge;
+    return (
+      limit.take(`${kind}-one-${mode}`, person, one[kind], DAY_MS).ok && limit.take(`${kind}-all-${mode}`, "all", all[kind], DAY_MS).ok
+    );
   };
+
   return {
     model: azureModel(),
     marketData,
@@ -84,5 +103,6 @@ export function agentDeps(mode: AgentMode, mandateId: bigint): AgentDeps {
     execute: (trade) => execute({ ...trade, key }),
     takeModelCall: () => take("models"),
     takeTransaction: () => take("transactions"),
+    busy: () => !demo && txQueue().pending(key) >= MAX_WAITING_TRADES,
   };
 }

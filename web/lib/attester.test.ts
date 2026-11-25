@@ -97,16 +97,33 @@ describe("attester", () => {
     expect(deps.send).toHaveBeenCalledTimes(1);
   });
 
-  it("refuses push 501 of the day and allows it the next day", async () => {
-    const { attester, deps, advance } = setup();
-    for (let i = 0; i < 500; i++) {
-      await attester.pushNow("loop");
+  it("never refuses the loop, whatever trades and visitors used up", async () => {
+    const { attester, deps, advance, age } = setup();
+    age.value = 999;
+    for (let i = 0; i < 400; i++) {
+      await (i % 2 ? attester.pushNow("button") : attester.ensureFresh());
       advance(30);
     }
-    expect(await attester.pushNow("loop")).toEqual({ status: "daily-limit" });
-    expect(deps.send).toHaveBeenCalledTimes(500);
-    advance(24 * 3600);
+    expect(deps.send).toHaveBeenCalledTimes(350); // 150 public and 200 for trades
     expect((await attester.pushNow("loop")).status).toBe("pushed");
+  });
+
+  it("allows 200 pushes for trades per day and starts again the next day", async () => {
+    const { attester, deps, advance } = setup();
+    for (let i = 0; i < 201; i++) {
+      await attester.pushNow("trade");
+      advance(30);
+    }
+    expect(deps.send).toHaveBeenCalledTimes(200);
+    expect(await attester.pushNow("trade")).toEqual({ status: "daily-limit" });
+    advance(24 * 3600);
+    expect((await attester.pushNow("trade")).status).toBe("pushed");
+  });
+
+  it("leaves out a quote from the future, which would revert the whole batch", async () => {
+    const { attester, sent } = setup({ gold: quote({ lastUpdated: 1795618800 + 241 }) });
+    await attester.pushNow("loop");
+    expect(sent[0]!.assets).toEqual([EQUITY]);
   });
 
   it("public refreshes cannot use up the pushes of the loop and trades", async () => {

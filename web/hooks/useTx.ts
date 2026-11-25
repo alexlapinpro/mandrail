@@ -1,7 +1,8 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useAccount, usePublicClient, useWriteContract } from "wagmi";
-import { explainWalletError } from "@/lib/walletErrors";
+import { bscTestnet } from "wagmi/chains";
+import { txFailure } from "@/lib/txFailure";
 
 type Call = Parameters<ReturnType<typeof useWriteContract>["writeContractAsync"]>[0];
 
@@ -9,6 +10,8 @@ export interface TxState {
   busy: string | null;
   error: string | null;
   done: string | null;
+  /** Transaction to look at when something went wrong after it was sent. */
+  hash: string | null;
 }
 
 /** Runs wallet transactions one after another: simulate, ask the wallet, wait until mined, refresh the page data. */
@@ -17,11 +20,14 @@ export function useTx() {
   const { address } = useAccount();
   const { writeContractAsync } = useWriteContract();
   const queryClient = useQueryClient();
-  const [state, setState] = useState<TxState>({ busy: null, error: null, done: null });
+  const [state, setState] = useState<TxState>({ busy: null, error: null, done: null, hash: null });
 
   async function run(label: string, done: string, ...calls: Call[]): Promise<boolean> {
     if (!client || state.busy) return false;
-    setState({ busy: label, error: null, done: null });
+    setState({ busy: label, error: null, done: null, hash: null });
+    let hash: string | undefined;
+    let reverted = false;
+    let stepsDone = 0;
     try {
       for (const [i, call] of calls.entries()) {
         const simulate = () =>
@@ -36,16 +42,23 @@ export function useTx() {
             await new Promise((resolve) => setTimeout(resolve, 1_500));
           }
         }
-        const hash = await writeContractAsync(call);
-        const receipt = await client.waitForTransactionReceipt({ hash, timeout: 60_000 });
-        if (receipt.status !== "success") throw new Error("reverted");
+        const sent = await writeContractAsync({ ...call, chainId: bscTestnet.id } as Call);
+        hash = sent;
+        const receipt = await client.waitForTransactionReceipt({ hash: sent, timeout: 60_000 });
+        if (receipt.status !== "success") {
+          reverted = true;
+          throw new Error("reverted");
+        }
+        hash = undefined;
+        stepsDone++;
       }
       await queryClient.invalidateQueries();
-      setState({ busy: null, error: null, done });
+      setState({ busy: null, error: null, done, hash: null });
       return true;
     } catch (error) {
       await queryClient.invalidateQueries();
-      setState({ busy: null, error: explainWalletError(error, Math.floor(Date.now() / 1000)), done: null });
+      const failure = txFailure({ error, hash, reverted, stepsDone, now: Math.floor(Date.now() / 1000) });
+      setState({ busy: null, error: failure.text, done: null, hash: failure.hash ?? null });
       return false;
     }
   }

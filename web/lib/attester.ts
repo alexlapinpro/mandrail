@@ -46,24 +46,29 @@ export interface Attester {
 }
 
 const COOLDOWN_MS = 30_000;
-const DAILY_LIMIT = 500;
-/** Triggers anyone can cause from the browser get a share, so they cannot starve the loop and the trades. */
-const PUBLIC_TRIGGERS = ["button", "load"];
-const PUBLIC_DAILY_LIMIT = 150;
+/** Separate daily budgets, so visitors and trades can never stop the loop. It runs 288 times a day and has no cap. */
+type Budget = "loop" | "public" | "trade";
+const DAILY: Record<Budget, number> = { loop: Infinity, public: 150, trade: 200 };
+const budgetOf = (trigger: string): Budget =>
+  trigger === "loop" ? "loop" : trigger === "button" || trigger === "load" ? "public" : "trade";
+const MAX_FUTURE_SECONDS = 240; // the oracle refuses more than 300
 const FRESH_SECONDS = 120;
 const DAY_MS = 86_400_000;
 
 export function createAttester(deps: Deps): Attester {
   let lastAttempt = -Infinity;
   let day = -1;
-  let pushesToday = 0;
-  let publicToday = 0;
+  let used: Record<Budget, number> = { loop: 0, public: 0, trade: 0 };
   let inFlight: Promise<PushResult> | null = null;
   let last: { status: PushResult["status"]; at: number } | null = null;
 
   async function push(trigger: string): Promise<PushResult> {
     const quotes = await deps.getQuotes(deps.assets.map((a) => a.cmcId));
-    const priced = deps.assets.filter((a) => quotes.get(a.cmcId));
+    const latest = deps.now() / 1000 + MAX_FUTURE_SECONDS;
+    const priced = deps.assets.filter((a) => {
+      const quote = quotes.get(a.cmcId);
+      return quote && quote.lastUpdated <= latest;
+    });
     if (priced.length === 0) {
       deps.log(`[attester] trigger=${trigger} CoinMarketCap unavailable, nothing pushed`);
       return { status: "unavailable" };
@@ -108,16 +113,13 @@ export function createAttester(deps: Deps): Attester {
     const today = Math.floor(now / DAY_MS);
     if (today !== day) {
       day = today;
-      pushesToday = 0;
-      publicToday = 0;
+      used = { loop: 0, public: 0, trade: 0 };
     }
-    const isPublic = PUBLIC_TRIGGERS.includes(trigger);
-    if (pushesToday >= DAILY_LIMIT) return { status: "daily-limit" };
-    if (isPublic && publicToday >= PUBLIC_DAILY_LIMIT) return { status: "daily-limit" };
+    const budget = budgetOf(trigger);
+    if (used[budget] >= DAILY[budget]) return { status: "daily-limit" };
 
     lastAttempt = now;
-    pushesToday++;
-    if (isPublic) publicToday++;
+    used[budget]++;
     inFlight = push(trigger)
       .catch((error: Error): PushResult => {
         // RPC errors can carry URLs and request bodies, so only their kind is logged.

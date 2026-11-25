@@ -32,6 +32,6 @@ export function sendTransaction(key: KeyName, request: TxRequest): Promise<Trans
       const known = await client.getTransaction({ hash }).catch(() => null);
       if (!known) throw error;
     }
-    return client.waitForTransactionReceipt({ hash, timeout: 45_000 });
+    return client.waitForTransactionReceipt({ hash, timeout: 45_000, checkReplacement: false });
   });
 }

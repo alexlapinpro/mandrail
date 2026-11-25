@@ -77,6 +77,20 @@ describe("transaction queue", () => {
     expect(calls).toBe(1);
   });
 
+  it("reports how many jobs of a key are waiting or running", async () => {
+    const { queue } = setup(5);
+    let release = () => {};
+    const first = queue.enqueue("agent", () => new Promise<void>((r) => (release = r)));
+    const second = queue.enqueue("agent", async () => Promise.reject(new Error("boom")));
+    second.catch(() => {});
+    expect([queue.pending("agent"), queue.pending("attester")]).toEqual([2, 0]);
+    await wait(1);
+    release();
+    await first;
+    await second.catch(() => {});
+    expect(queue.pending("agent")).toBe(0);
+  });
+
   it("different keys do not wait for each other", async () => {
     const { queue } = setup(5);
     let release = () => {};

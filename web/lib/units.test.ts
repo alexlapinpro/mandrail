@@ -51,6 +51,8 @@ describe("formatting", () => {
     expect(formatUsd(0n)).toBe("$0.00");
     expect(formatUsd(1n)).toBe("<$0.01");
     expect(formatUsd(100n * E + 1n)).toBe("$100.00");
+    expect(formatUsd(999_999_999_999n * E)).toBe("$999,999,999,999.00");
+    expect(formatUsd(2n ** 256n - 1n)).toBe("over $999 billion");
   });
   it("formats ppm as percent without losing small moves", () => {
     expect(formatPpm(-23500n)).toBe("-2.35%");
@@ -62,7 +64,8 @@ describe("formatting", () => {
 
 describe("helperThreshold", () => {
   it.each([
-    [-40n, 20],
+    [-40n, 4],
+    [2267n, 226],
     [3n, 1],
     [2n, 1],
     [1n, null],

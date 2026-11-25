@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { Action } from "@/lib/agent/run";
 import type { ChatReply } from "@/hooks/useApi";
+import { chatPayload } from "@/lib/chatPayload";
 import { chatFailure } from "@/lib/chatFailure";
 import { ActionCard } from "./ActionCard";
 import { Button, Notice } from "./ui";
@@ -42,8 +43,7 @@ export function ChatBox({ send, chips, empty, disabled, onReply }: Props) {
     setError(null);
     setBusy(true);
     try {
-      // Empty assistant texts would be refused by the model API.
-      const reply = await send(next.filter((t) => t.content).slice(-20).map(({ role, content: c }) => ({ role, content: c })));
+      const reply = await send(chatPayload(next));
       setTurns([...next, { role: "assistant", content: reply.message, actions: reply.actions }]);
     } catch (e) {
       const { text: advice, restore } = chatFailure(e);

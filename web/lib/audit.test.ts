@@ -18,18 +18,19 @@ const row = (block: number, over: Partial<RawDecision> = {}): RawDecision => ({
 });
 
 function setup(initial: RawDecision[] = [], head = DEPLOY + 100) {
-  const chain = { head, rows: initial, failOn: -1, now: 0 };
+  const chain = { head, rows: initial, failFrom: Infinity, maxSpan: Infinity, now: 0 };
   const ranges: [number, number][] = [];
   const deps = {
     deployBlock: DEPLOY,
     head: vi.fn(async () => chain.head),
     getDecisions: vi.fn(async (from: number, to: number) => {
       ranges.push([from, to]);
-      if (ranges.length - 1 === chain.failOn) throw new Error("rpc down");
+      if (from >= chain.failFrom || to - from > chain.maxSpan) throw new Error("rpc down");
       return chain.rows.filter((r) => r.blockNumber >= from && r.blockNumber <= to);
     }),
     blockTime: vi.fn(async (n: number) => 1_795_000_000 + n),
     now: () => chain.now,
+    patienceMs: 30,
   };
   return { chain, ranges, deps, audit: createAudit(deps) };
 }
@@ -57,13 +58,47 @@ describe("audit index", () => {
     expect(ids(rows)).toEqual([`0x${DEPLOY + 1010}`, `0x${DEPLOY + 995}`]);
   });
 
-  it("drops a decision that a reorg removed inside the overlap", async () => {
+  it("drops a decision only after three reads without it, so a lagging node cannot hide the newest", async () => {
     const { audit, chain } = setup([row(DEPLOY + 95)]);
+    const read = async (at: number) => {
+      chain.now = at;
+      chain.head++;
+      return ids((await audit.getAudit()).rows).length;
+    };
+    expect(await read(0)).toBe(1);
+    const all = chain.rows;
+    chain.rows = [];
+    expect([await read(3_000), await read(6_000)]).toEqual([1, 1]);
+    chain.rows = all;
+    expect(await read(9_000)).toBe(1); // seen again, so the count starts over
+    chain.rows = [];
+    expect([await read(12_000), await read(15_000), await read(18_000)]).toEqual([1, 1, 0]);
+  });
+
+  it("splits a range the RPC refuses for its size", async () => {
+    const { audit, chain, ranges } = setup([row(DEPLOY + 5), row(DEPLOY + 39_000)], DEPLOY + 39_999);
+    chain.maxSpan = 10_000;
+    const { rows, stale } = await audit.getAudit();
+    expect(stale).toBe(false);
+    expect(rows).toHaveLength(2);
+    expect(Math.min(...ranges.map(([a, b]) => b - a))).toBeLessThan(10_000);
+  });
+
+  it("gives up quickly when the RPC is down", async () => {
+    const { audit, chain, ranges } = setup([], DEPLOY + 39_999);
+    chain.maxSpan = 0;
+    expect((await audit.getAudit()).stale).toBe(true);
+    expect(ranges.length).toBeLessThanOrEqual(6);
+  });
+
+  it("answers with the rows it has, marked stale, when the RPC hangs", async () => {
+    const { audit, chain, deps } = setup([row(DEPLOY + 95)]);
     await audit.getAudit();
     chain.now = 3_000;
-    chain.head = DEPLOY + 101;
-    chain.rows = [];
-    expect((await audit.getAudit()).rows).toEqual([]);
+    deps.head.mockImplementationOnce(() => new Promise(() => {}));
+    const { rows, stale } = await audit.getAudit();
+    expect(rows).toHaveLength(1);
+    expect(stale).toBe(true);
   });
 
   it("never reads before the deploy block", async () => {
@@ -81,12 +116,13 @@ describe("audit index", () => {
     chain.now = 3_000;
     chain.head = DEPLOY + 60_000;
     chain.rows.push(row(DEPLOY + 30_000), row(DEPLOY + 59_000));
-    chain.failOn = 2; // second chunk of this refresh
+    chain.failFrom = DEPLOY + 30_500; // the second part of this refresh
     const broken = await audit.getAudit();
     expect(broken.stale).toBe(true);
     expect(ids(broken.rows)).toContain(`0x${DEPLOY + 95}`);
 
     chain.now = 6_000;
+    chain.failFrom = Infinity;
     const fixed = await audit.getAudit();
     expect(fixed.stale).toBe(false);
     expect(ids(fixed.rows)).toEqual([`0x${DEPLOY + 59_000}`, `0x${DEPLOY + 30_000}`, `0x${DEPLOY + 95}`]);
@@ -94,7 +130,7 @@ describe("audit index", () => {
 
   it("a failing first read gives an empty stale feed, not an exception", async () => {
     const { audit, chain } = setup();
-    chain.failOn = 0;
+    chain.failFrom = 0;
     expect(await audit.getAudit()).toMatchObject({ rows: [], stale: true });
   });
 

@@ -76,11 +76,10 @@ Needs Node 20.12 or newer, pnpm 10 and [Foundry](https://getfoundry.sh). Fill `.
 pnpm i
 cp .env.example .env
 pnpm contracts:deploy
-pnpm attester
 pnpm dev
 ```
 
-`pnpm contracts:deploy` writes your own addresses to `contracts/deployments/bsc-testnet.json`. Skip it to use the deployment above: you can read it and create mandates for your own agent address (empty the identity field, 2929 belongs to our agent), but prices come only from our attester. `pnpm attester` and `pnpm dev` run in two terminals.
+`pnpm contracts:deploy` writes your own addresses to `contracts/deployments/bsc-testnet.json`. Skip it to use the deployment above: you can read it and create mandates for your own agent address (empty the identity field, 2929 belongs to our agent), but prices come only from our attester. Set `ATTESTER_LOOP=on` in `.env` so that `pnpm dev` pushes prices every 5 minutes. `pnpm attester` is the same loop without the app; do not run both, they share a key.
 
 | Command | What it does |
 |---|---|
@@ -91,7 +90,7 @@ pnpm dev
 | `pnpm contracts:verify` | Verifies the contracts on BscScan |
 | `pnpm register-agent` | Registers the agent in the ERC-8004 registry, once. After a redeploy set `agentIdentityId` again instead |
 
-Checked on 26 Nov 2026: 297 app tests, 112 contract tests, 2 tests against the live Atlas feeds on a mainnet fork. Line and branch coverage of `PolicyGuard` is 100%.
+Checked on 26 Nov 2026: 337 app tests, 112 contract tests, 2 tests against the live Atlas feeds on a mainnet fork. Line and branch coverage of `PolicyGuard` is 100%.
 
 ## Documentation
 

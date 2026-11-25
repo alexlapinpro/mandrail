@@ -10,7 +10,7 @@ import { useTx } from "@/hooks/useTx";
 import { MandateControls } from "./MandateControls";
 import { MandateCreate } from "./MandateCreate";
 import { MandateSummary } from "./MandateSummary";
-import { Button, Notice, Panel, SignedBy } from "./ui";
+import { Button, Notice, Panel, SignedBy, TxLink } from "./ui";
 
 interface Props {
   owner: Address | undefined;
@@ -25,6 +25,9 @@ interface Props {
 
 export function MandatePanel({ owner, connectedElsewhere, ids, selected, onSelect, onCreated, loading, failed }: Props) {
   const [creating, setCreating] = useState(false);
+  // After creating, the list can lag a few seconds; the form must not come back and invite a second mandate.
+  const [countBefore, setCountBefore] = useState<number | null>(null);
+  const arriving = countBefore !== null && ids.length <= countBefore;
   const { mandate, isError } = useMandate(selected);
   const balance = useTestUsd(owner);
   const faucet = useTx();
@@ -56,7 +59,11 @@ export function MandatePanel({ owner, connectedElsewhere, ids, selected, onSelec
               {faucet.busy ? "Waiting" : "Get test USD"}
             </Button>
           </div>
-          {faucet.error && <Notice tone="error">{faucet.error}</Notice>}
+          {faucet.error && (
+            <Notice tone="error">
+              {faucet.error} {faucet.hash && <TxLink hash={faucet.hash} />}
+            </Notice>
+          )}
           {faucet.done && <Notice tone="done">{faucet.done}</Notice>}
         </div>
 
@@ -83,10 +90,13 @@ export function MandatePanel({ owner, connectedElsewhere, ids, selected, onSelec
           </div>
         )}
 
-        {!loading && !failed && (creating || ids.length === 0) && (
+        {arriving && <p className="text-muted">Mandate created. Waiting for the chain to list it…</p>}
+
+        {!loading && !failed && !arriving && (creating || ids.length === 0) && (
           <MandateCreate
             onCreated={() => {
               setCreating(false);
+              setCountBefore(ids.length);
               onCreated();
             }}
           />

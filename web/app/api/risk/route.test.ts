@@ -11,6 +11,7 @@ import { GET } from "./route";
 const risk = { priceUsd: 101n * E, change1hPpm: 5n, change24hPpm: -5n, updatedAt: 20n, sourceTimestamp: 10n, atlasPriceUsd: 100n * E, atlasTimestamp: 9n };
 
 beforeEach(() => {
+  delete (globalThis as Record<string, unknown>).__mandrail_risk;
   vi.clearAllMocks();
   mocks.atlas.mockResolvedValue({ price: 100n * E, timestamp: 9 });
   mocks.mainnet.mockResolvedValue({ reason: "OK", gapPpm: 10_000n });
@@ -28,6 +29,14 @@ describe("GET /api/risk", () => {
     expect(equity!.mainnet).toEqual({ reason: "OK", gapPpm: "10000" });
     expect(mocks.mainnet).toHaveBeenCalledTimes(1);
     expect(mocks.mainnet).toHaveBeenCalledWith(934, 101n * E);
+  });
+  it("shares one round of chain reads among all open pages", async () => {
+    await Promise.all(Array.from({ length: 30 }, () => GET()));
+    expect(mocks.read).toHaveBeenCalledTimes(4);
+  });
+  it("does not ask Atlas directly, the page shows what the guard sees", async () => {
+    await GET();
+    expect(mocks.atlas).not.toHaveBeenCalled();
   });
   it("marks missing sources as null, never as zero", async () => {
     mocks.read.mockImplementation(async ({ functionName }: { functionName: string }) =>

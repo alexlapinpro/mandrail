@@ -94,7 +94,7 @@ async function step(id: bigint, prompt: string, expected: string): Promise<void>
     mode: "owner",
     mandateId: id,
     messages: [{ role: "user", content: prompt }],
-    deps: agentDeps("owner", id),
+    deps: agentDeps("owner", id, owner.address),
   });
   const trade = actions.filter((a) => a.tool === "execute_trade").at(-1)?.result as
     | { status?: string; reason?: string; hash?: string; error?: string }

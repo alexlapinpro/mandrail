@@ -34,7 +34,7 @@ Seen live on 26 Nov 2026:
 
 ## Proof of live calls
 
-Server log, followed by the transaction that carried the data:
+Log of the attester (here started by hand with `pnpm attester --once`; the hosted loop writes the same lines with `trigger=loop`), followed by the transaction that carried the data:
 
 ```
 [attester] trigger=manual CMC PAXG $3571.1641149621164 1h=0.75685097652% last_updated=2026-11-25T20:28:04.000Z
@@ -46,7 +46,7 @@ Server log, followed by the transaction that carried the data:
 
 ## Quota and failure handling
 
-One call prices both assets. Answers are cached for 30 s. Pushes run every 5 minutes (288 calls per day) plus before a trade when the quote is older than 120 s, with a hard limit of 500 per day. The agent's price lookups share the 30 s cache. Open pages never call CMC. If CMC misses a price or a change for one asset, that asset is skipped and never becomes 0. If Atlas does not answer, the CMC part still updates and the last Atlas price keeps its age, so the guard blocks once it is older than an hour.
+One call prices both assets. Answers are cached for 30 s. The loop pushes every 5 minutes (288 per day). Trades may add up to 200 pushes per day and page loads or the refresh button up to 150, only when the on-chain quote is older than 120 s or the button is pressed. Pages that are just open never call CMC. The agent's price lookups share the 30 s cache. If CMC misses a price or a change for one asset, that asset is skipped and never becomes 0. If Atlas does not answer, the CMC part still updates and the last Atlas price keeps its age, so the guard blocks once it is older than an hour.
 
 ## Contract addresses
 

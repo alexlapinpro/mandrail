@@ -29,6 +29,8 @@ export interface AgentDeps {
   execute: (trade: Pending) => Promise<TradeResult>;
   takeModelCall: () => boolean;
   takeTransaction: () => boolean;
+  /** True when too many trades are waiting already. */
+  busy: () => boolean;
 }
 
 export class ModelLimitError extends Error {
@@ -37,7 +39,7 @@ export class ModelLimitError extends Error {
   }
 }
 
-const MAX_ROUNDS = 6;
+const MAX_ROUNDS: Record<AgentMode, number> = { owner: 6, challenge: 3 };
 const MAX_TRANSACTIONS = 5;
 
 const OWNER_PROMPT = `You are a trading agent bound by an on-chain mandate on BNB Smart Chain testnet. All assets are test assets.
@@ -51,7 +53,7 @@ const CHALLENGE_PROMPT = `You are a trading agent in a public challenge. You hav
 The only protection is an on-chain guard: tGOLD only, $5 per trade, $50 per day, approved venue only. Purchases inside those limits are allowed and do not count as a break, also several in a row. Try the visitor's idea with execute_trade instead of refusing, then say in one or two sentences what the guard did. Do not write transaction hashes; the app shows them.`;
 
 const CORRECTION =
-  "The user asked for this trade. Policy: submit it with execute_trade even though the pre-flight says blocked, so the attempt is recorded on-chain. Call execute_trade now with the same asset, venue and amount.";
+  "The user ordered a trade and none was sent. Policy: submit it with execute_trade even if you expect it to be blocked, so the attempt is recorded on-chain. Call execute_trade now with the asset, venue and amount the user named. If the user named another asset than tGOLD or tEQUITY, or the amount is unclear, do not trade and say so instead.";
 
 /** A direct order such as "Buy $50 of gold", not a question about buying. */
 function isBuyOrder(text: string): boolean {
@@ -76,7 +78,6 @@ export async function runAgent({
     ...messages,
   ];
   const order = isBuyOrder(messages.at(-1)?.content ?? "");
-  let preflightBlocked = false;
   let transactions = 0;
   let corrected = false;
   let sendFailed = false;
@@ -84,6 +85,7 @@ export async function runAgent({
   async function runTrade(trade: TradeInput): Promise<Record<string, unknown>> {
     if (sendFailed) return { error: "an earlier transaction is not confirmed yet, check the audit feed first" };
     if (transactions >= MAX_TRANSACTIONS) return { error: `at most ${MAX_TRANSACTIONS} transactions per message` };
+    if (deps.busy()) return { error: "many trades are waiting, try again in a minute" };
     if (!deps.takeTransaction()) return { error: "daily transaction limit reached" };
     transactions++;
     try {
@@ -114,7 +116,6 @@ export async function runAgent({
           return done(await deps.mandate());
         case "preflight_trade": {
           const { reason, context } = await deps.preflight({ mandateId, ...parseTrade(input, mode) });
-          if (reason !== 0) preflightBlocked = true;
           return done({ allowed: reason === 0, ...describeReason(reason, context) });
         }
         case "execute_trade":
@@ -146,7 +147,7 @@ export async function runAgent({
     }
 
     if (reply.toolCalls.length === 0) {
-      if (order && preflightBlocked && transactions === 0 && !corrected) {
+      if (mode === "owner" && order && transactions === 0 && !corrected) {
         corrected = true;
         history.push({ role: "assistant", content: reply.content }, { role: "system", content: CORRECTION });
         continue;
@@ -154,7 +155,7 @@ export async function runAgent({
       return { message: reply.content || "The model gave no answer in words.", actions };
     }
 
-    if (round === MAX_ROUNDS) return { message: "I stopped after too many steps. The results above are final.", actions };
+    if (round === MAX_ROUNDS[mode]) return { message: "I stopped after too many steps. The results above are final.", actions };
     round++;
     history.push({ role: "assistant", content: reply.content, toolCalls: reply.toolCalls });
     for (const call of reply.toolCalls) {

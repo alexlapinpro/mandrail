@@ -5,6 +5,8 @@ import { accountOf, publicClient, type KeyName } from "./clients";
 export interface TxQueue {
   /** Runs jobs of one key one at a time. The job gets the nonce to use and resolves once it is mined. */
   enqueue<T>(key: KeyName, job: (nonce: number) => Promise<T>): Promise<T>;
+  /** Jobs of a key that are waiting or running. */
+  pending(key: KeyName): number;
 }
 
 /** Only errors that prove nothing was sent. "already known" is not one of them. */
@@ -13,6 +15,7 @@ const isNonceError = (error: unknown) => /nonce too (low|high)/i.test(String((er
 export function createTxQueue(chainNonce: (key: KeyName) => Promise<number>): TxQueue {
   const tails = new Map<KeyName, Promise<unknown>>();
   const next = new Map<KeyName, number>();
+  const waiting = new Map<KeyName, number>();
 
   async function run<T>(key: KeyName, job: (nonce: number) => Promise<T>): Promise<T> {
     // A load-balanced RPC can lag behind a transaction that is already mined.
@@ -23,7 +26,9 @@ export function createTxQueue(chainNonce: (key: KeyName) => Promise<number>): Tx
   }
 
   return {
+    pending: (key) => waiting.get(key) ?? 0,
     enqueue(key, job) {
+      waiting.set(key, (waiting.get(key) ?? 0) + 1);
       const previous = tails.get(key) ?? Promise.resolve();
       const current = previous.then(() =>
         run(key, job).catch((error) => {
@@ -32,11 +37,12 @@ export function createTxQueue(chainNonce: (key: KeyName) => Promise<number>): Tx
           return run(key, job);
         }),
       );
+      const settled = current.finally(() => waiting.set(key, (waiting.get(key) ?? 1) - 1));
       tails.set(
         key,
-        current.catch(() => {}),
+        settled.catch(() => {}),
       );
-      return current;
+      return settled;
     },
   };
 }

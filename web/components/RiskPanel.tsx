@@ -5,9 +5,13 @@ import { useQueryClient } from "@tanstack/react-query";
 import { ApiError, postJson, useRisk, type RiskView } from "@/hooks/useApi";
 import { useMandate, type MandateView } from "@/hooks/useMandate";
 import { useNow } from "@/hooks/useNow";
+import { sourceState, type SourceState } from "@/lib/sourceState";
 import { ageText } from "@/lib/time";
 import { formatPpm, formatUsd } from "@/lib/units";
 import { Button, Notice, Panel } from "./ui";
+
+const DEFAULT_MAX_AGE = 900;
+const ATLAS_MAX_AGE = 3600; // RiskOracle.maxAtlasAge
 
 export function RiskPanel({ mandateId }: { mandateId: bigint | null }) {
   const { data, isError } = useRisk();
@@ -74,9 +78,19 @@ function AssetRisk({ asset, mandate, now }: { asset: RiskView["assets"][number];
         <span className="text-sm text-muted">Test asset, reference price: {asset.reference}</span>
       </p>
       <dl className="grid grid-cols-2 gap-x-4 gap-y-1">
-        <Source name="CoinMarketCap" price={cmc?.price ?? null} age={cmc ? age(cmc.timestamp) : ""} />
+        <Source
+          name="CoinMarketCap"
+          price={cmc?.price ?? null}
+          age={cmc ? age(cmc.timestamp) : ""}
+          state={sourceState(cmc?.timestamp ?? null, now, mandate ? Number(mandate.maxRiskAgeSeconds) : DEFAULT_MAX_AGE)}
+        />
         {asset.atlasFeed ? (
-          <Source name="Atlas" price={atlas?.price ?? null} age={atlas ? age(atlas.timestamp) : ""} />
+          <Source
+            name="Atlas"
+            price={atlas?.price ?? null}
+            age={atlas ? age(atlas.timestamp) : ""}
+            state={sourceState(atlas?.timestamp ?? null, now, ATLAS_MAX_AGE)}
+          />
         ) : (
           <div>
             <dt className="text-sm text-muted">Atlas</dt>
@@ -122,12 +136,16 @@ function AssetRisk({ asset, mandate, now }: { asset: RiskView["assets"][number];
   );
 }
 
-function Source({ name, price, age }: { name: string; price: string | null; age: string }) {
+function Source({ name, price, age, state }: { name: string; price: string | null; age: string; state: SourceState }) {
   return (
     <div>
       <dt className="text-sm text-muted">{name}</dt>
-      {price === null ? (
+      {price === null || state === "missing" ? (
         <dd className="text-caution">Source unavailable</dd>
+      ) : state === "old" ? (
+        <dd className="text-caution">
+          Source unavailable. Last price {formatUsd(BigInt(price))}, {age} old
+        </dd>
       ) : (
         <dd>
           <span className="font-sign text-2xl font-semibold">{formatUsd(BigInt(price))}</span>{" "}

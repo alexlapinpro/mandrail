@@ -3,6 +3,7 @@ import { ContentFilterError, FILTER_MESSAGE } from "@/lib/agent/errors";
 import { parseMessages } from "@/lib/agent/messages";
 import { ModelLimitError, runAgent } from "@/lib/agent/run";
 import { agentDeps } from "@/lib/agent/wiring";
+import { clientIp } from "@/lib/challenge";
 import { fail, json, logError, readObject } from "@/lib/http";
 import { rateLimit } from "@/lib/rateLimit";
 
@@ -10,15 +11,20 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request): Promise<Response> {
+  const visitor = rateLimit().take("chat-ip", clientIp(request.headers), 30, 60_000);
+  if (!visitor.ok) return fail(429, "Too many messages.", { retryAfter: visitor.retryAfter });
+
   const body = await readObject(request);
   const messages = parseMessages(body?.messages);
   if (!body || !messages) return fail(400, "Send 1 to 2,000 characters of text.");
   const claim = body as unknown as { mandateId: string; expires: number; signature: string };
 
+  let owner: string;
   try {
     const allowed = await access().verify(claim);
-    if (allowed === "unknown-mandate") return fail(404, "This mandate does not exist.");
-    if (allowed !== "ok") return fail(403, "Sign to chat again: only the mandate owner can use its agent.");
+    if (allowed.status === "unknown-mandate") return fail(404, "This mandate does not exist.");
+    if (allowed.status === "ok") owner = allowed.owner;
+    else return fail(403, "Sign to chat again: only the mandate owner can use its agent.");
   } catch (error) {
     logError("chat", error);
     return fail(502, "The chain did not answer. Try again.");
@@ -29,7 +35,7 @@ export async function POST(request: Request): Promise<Response> {
 
   try {
     const mandateId = BigInt(claim.mandateId);
-    return json(await runAgent({ mode: "owner", mandateId, messages, deps: agentDeps("owner", mandateId) }));
+    return json(await runAgent({ mode: "owner", mandateId, messages, deps: agentDeps("owner", mandateId, owner) }));
   } catch (error) {
     if (error instanceof ContentFilterError) return fail(422, FILTER_MESSAGE);
     if (error instanceof ModelLimitError) return fail(429, "The daily model limit is reached.");

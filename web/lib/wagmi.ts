@@ -8,4 +8,5 @@ export const wagmiConfig = createConfig({
   connectors: [injected()],
   transports: { [bscTestnet.id]: http(RPC, { batch: true }) },
   ssr: true,
+  pollingInterval: 1_000,
 });

@@ -27,7 +27,6 @@ export interface RiskView {
     cmc: { price: string; change1hPpm: string; change24hPpm: string; timestamp: string; pushedAt: string } | null;
     atlasFeed: boolean;
     atlas: { price: string; timestamp: string } | null;
-    atlasLive: { price: string; timestamp: number } | null;
     gapPpm: string | null;
     marketOpen: boolean;
     mainnet: { address: string; reason: string; gapPpm: string; maxDivergencePpm: number } | null;
@@ -74,7 +73,7 @@ const POLL = 5_000;
 export const useAudit = (mandateId: bigint | null) =>
   useQuery({
     queryKey: ["audit", mandateId?.toString() ?? "all"],
-    queryFn: () => getJson<{ rows: AuditRowView[]; stale: boolean }>(`/api/audit${mandateId ? `?mandateId=${mandateId}` : ""}`),
+    queryFn: () => getJson<{ rows: AuditRowView[]; stale: boolean; hiddenUnauthorised: number }>(`/api/audit${mandateId ? `?mandateId=${mandateId}` : ""}`),
     refetchInterval: POLL,
   });
 

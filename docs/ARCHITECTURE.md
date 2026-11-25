@@ -52,11 +52,12 @@ One Next.js process serves the UI, the API, the agent and the price loop.
 
 | Part | Behaviour |
 |---|---|
-| Price push | Every 5 minutes when `ATTESTER_LOOP=on`, and before a trade when the on-chain quote is older than 120 s. At most one push per 30 s and 500 per day; public triggers get 150 of these |
+| Price push | Every 5 minutes when `ATTESTER_LOOP=on`, and before a trade when the on-chain quote is older than 120 s. At most one push per 30 s. Trades get 200 pushes per day and public triggers 150; the loop is never refused |
 | Transactions | One queue per key. The outcome shown to the user comes from the receipt's events, never from model text |
 | Chat access | The owner signs one EIP-191 message (mandate, chain, guard, expiry up to an hour). The server compares the signer with the on-chain owner. The mandate id is bound on the server; the model cannot choose it |
-| Limits | 10 messages per minute per mandate, 5 transactions per message, daily caps per mandate and in total |
-| Audit feed | Built from events, in memory. The chain is the only database |
+| Limits | 10 messages per minute per mandate, 30 per network address, 5 transactions per message. Daily caps per owner address and in total, because mandates are free. Addresses in `DEMO_OWNERS` have their own reserve. `/break`: 15 messages per minute and 60 model calls per day per network address, 1,000 model calls and 300 transactions in total |
+| Shared reads | Pages poll the server; chain reads behind `/api/risk` and `/api/break` are shared for 4 s |
+| Audit feed | Built from events, in memory. The chain is the only database. A decision is dropped only after three reads without it, so a lagging RPC node cannot hide it |
 
 The process must run as **one replica**. Two would share keys without sharing the queue and collide on nonces. Scaling out needs a shared queue and shared counters.
 
@@ -85,5 +86,8 @@ The process must run as **one replica**. Two would share keys without sharing th
 - Making the period longer brings spending of an already ended window back into the count. This only tightens the limit.
 - Strangers can add `NOT_AGENT` entries to a mandate's feed at their own gas cost.
 - Only buying is supported.
-- Rate limits live in memory and reset when the process restarts.
+- Rate limits live in memory and reset when the process restarts. That is also the emergency button.
+- The period is a fixed window, not a rolling one: up to twice the period limit can be spent around the edge between two windows.
+- The chat signature has no domain and no nonce. Someone who obtains it can talk to the agent of that mandate for up to an hour, within the mandate. Contract wallets cannot sign in.
+- A stuck transaction is not replaced with a higher fee; later ones of the same key wait behind it.
 - The contracts have not had an external audit.

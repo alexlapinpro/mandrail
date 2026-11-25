@@ -7,7 +7,7 @@ import { mandateRegistryAbi } from "@/lib/abi";
 import { ASSETS, type AssetSymbol } from "@/lib/assets";
 import { deployment } from "@/lib/deployment";
 import { DEFAULT_FORM, JURISDICTIONS, toParams, type FormErrors, type Jurisdiction, type MandateForm } from "@/lib/mandateForm";
-import { Button, Field, Notice } from "./ui";
+import { Button, Field, Notice, TxLink } from "./ui";
 
 export function MandateCreate({ onCreated }: { onCreated: () => void }) {
   const agent = useAgentAddress();
@@ -102,7 +102,11 @@ export function MandateCreate({ onCreated }: { onCreated: () => void }) {
       <Button tone="signal" type="submit" disabled={!!tx.busy} className="w-full">
         {tx.busy ? "Waiting for wallet" : "Create mandate"}
       </Button>
-      {tx.error && <Notice tone="error">{tx.error}</Notice>}
+      {tx.error && (
+        <Notice tone="error">
+          {tx.error} {tx.hash && <TxLink hash={tx.hash} />}
+        </Notice>
+      )}
     </form>
   );
 }

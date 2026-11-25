@@ -13,7 +13,7 @@ const mocks = vi.hoisted(() => ({
 }));
 vi.mock("@/lib/access", () => ({ access: () => ({ verify: mocks.verify }) }));
 vi.mock("@/lib/agent/run", async (original) => ({ ...(await original<object>()), runAgent: mocks.runAgent }));
-vi.mock("@/lib/agent/wiring", () => ({ agentDeps: (mode: string, id: bigint) => ({ mode, id }) }));
+vi.mock("@/lib/agent/wiring", () => ({ agentDeps: (mode: string, id: bigint, who: string) => ({ mode, id, who }) }));
 vi.mock("@/lib/attester", () => ({
   attester: () => ({ pushNow: mocks.pushNow, ensureFresh: mocks.ensureFresh, last: () => null }),
 }));
@@ -42,7 +42,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   vi.spyOn(console, "error").mockImplementation(() => {});
   mocks.limiter.current = createRateLimit(Date.now);
-  mocks.verify.mockResolvedValue("ok");
+  mocks.verify.mockResolvedValue({ status: "ok", owner: "0xowner" });
   mocks.runAgent.mockResolvedValue({ message: "hello", actions: [{ tool: "x", input: {}, result: { n: 5n } }] });
   process.env.ATTEST_SECRET = "s3cret";
 });
@@ -52,13 +52,13 @@ describe("POST /api/chat", () => {
     const response = await chat(ask());
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ message: "hello", actions: [{ tool: "x", input: {}, result: { n: "5" } }] });
-    expect(mocks.runAgent).toHaveBeenCalledWith(expect.objectContaining({ mode: "owner", mandateId: 1n }));
+    expect(mocks.runAgent).toHaveBeenCalledWith(expect.objectContaining({ mode: "owner", mandateId: 1n, deps: { mode: "owner", id: 1n, who: "0xowner" } }));
   });
 
   it("refuses others before the model is called", async () => {
-    mocks.verify.mockResolvedValue("denied");
+    mocks.verify.mockResolvedValue({ status: "denied" });
     expect((await chat(ask())).status).toBe(403);
-    mocks.verify.mockResolvedValue("unknown-mandate");
+    mocks.verify.mockResolvedValue({ status: "unknown-mandate" });
     expect((await chat(ask())).status).toBe(404);
     expect(mocks.runAgent).not.toHaveBeenCalled();
   });
@@ -96,6 +96,15 @@ describe("POST /api/chat", () => {
     expect(response.status).toBe(429);
     expect((await response.json()).retryAfter).toBeGreaterThan(0);
     expect((await chat(ask("hi", { mandateId: "2" }))).status).toBe(200);
+  });
+
+  it("limits one network address before any signature or chain work", async () => {
+    const from = (ip: string) => chat(new Request("http://localhost/api", { method: "POST", headers: { "x-forwarded-for": ip }, body: JSON.stringify({ mandateId: "x", messages: [{ role: "user", content: "hi" }] }) }));
+    mocks.verify.mockResolvedValue({ status: "denied" });
+    for (let i = 0; i < 30; i++) expect((await from("1.1.1.1")).status).toBe(403);
+    expect((await from("1.1.1.1")).status).toBe(429);
+    expect(mocks.verify).toHaveBeenCalledTimes(30);
+    expect((await from("2.2.2.2")).status).toBe(403);
   });
 
   it("says when the daily model limit is reached", async () => {
@@ -157,6 +166,14 @@ describe("POST /api/refresh", () => {
     expect(await response.text()).not.toContain("secret");
   });
 
+  it("limits one network address, and page loads just skip the check", async () => {
+    mocks.pushNow.mockResolvedValue({ status: "pushed", hash: "0x1" });
+    for (let i = 0; i < 12; i++) expect((await refresh(post({ trigger: "button" }))).status).toBe(200);
+    expect((await refresh(post({ trigger: "button" }))).status).toBe(429);
+    expect((await refresh(post({ trigger: "load" }))).status).toBe(200);
+    expect(mocks.ensureFresh).not.toHaveBeenCalled();
+  });
+
   it("a page load pushes only when the data is old", async () => {
     expect((await refresh(post({ trigger: "load" }))).status).toBe(200);
     expect(mocks.ensureFresh).toHaveBeenCalledTimes(1);
@@ -173,9 +190,22 @@ describe("GET /api/audit", () => {
       rows: [{ id: "a", mandateId: 3n, usd: 5n, kind: "blocked", reason: 2, context: "0x" }],
     });
     const body = await (await get("?mandateId=3")).json();
-    expect(mocks.getAudit).toHaveBeenCalledWith({ mandateId: 3n });
+    expect(mocks.getAudit).toHaveBeenCalledWith({ mandateId: 3n, limit: 100_000 });
     expect(body.rows[0]).toMatchObject({ mandateId: "3", reasonName: "MANDATE_INACTIVE", explanation: expect.stringMatching(/revoked/) });
   });
+  it("strangers cannot push real decisions out of the feed", async () => {
+    const line = (i: number, unauthorised: boolean) => ({ id: `${i}`, mandateId: 3n, usd: 5n, kind: "blocked", reason: unauthorised ? 1 : 2, context: "0x", unauthorised });
+    mocks.getAudit.mockResolvedValue({
+      stale: false,
+      head: 5,
+      rows: [...Array.from({ length: 500 }, (_, i) => line(i, true)), ...Array.from({ length: 300 }, (_, i) => line(1000 + i, false))],
+    });
+    const { rows, hiddenUnauthorised } = await (await get()).json();
+    expect(rows.filter((r: { unauthorised: boolean }) => !r.unauthorised)).toHaveLength(200);
+    expect(rows.filter((r: { unauthorised: boolean }) => r.unauthorised)).toHaveLength(30);
+    expect(hiddenUnauthorised).toBe(470);
+  });
+
   it.each(["?mandateId=abc", "?mandateId=-1", "?mandateId=1e9"])("rejects %s", async (query) => {
     expect((await get(query)).status).toBe(400);
   });
@@ -183,6 +213,10 @@ describe("GET /api/audit", () => {
 
 describe("GET /api/health", () => {
   it("is cheap and public", async () => {
-    expect(await (await health()).json()).toEqual({ ok: true });
+    expect(await (await health(new Request("http://localhost/api/health"))).json()).toEqual({ ok: true });
+  });
+  it("shows a caller its own address headers, to check the proxy", async () => {
+    const request = new Request("http://localhost/api/health?ip", { headers: { "x-forwarded-for": "6.6.6.6, 1.2.3.4", "x-real-ip": "1.2.3.4" } });
+    expect(await (await health(request)).json()).toEqual({ ok: true, forwardedFor: "6.6.6.6, 1.2.3.4", realIp: "1.2.3.4", limitKey: "1.2.3.4" });
   });
 });
