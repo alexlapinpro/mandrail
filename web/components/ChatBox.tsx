@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { Action } from "@/lib/agent/run";
-import { ApiError, type ChatReply } from "@/hooks/useApi";
+import type { ChatReply } from "@/hooks/useApi";
+import { chatFailure } from "@/lib/chatFailure";
 import { ActionCard } from "./ActionCard";
 import { Button, Notice } from "./ui";
 
@@ -45,10 +46,12 @@ export function ChatBox({ send, chips, empty, disabled, onReply }: Props) {
       const reply = await send(next.filter((t) => t.content).slice(-20).map(({ role, content: c }) => ({ role, content: c })));
       setTurns([...next, { role: "assistant", content: reply.message, actions: reply.actions }]);
     } catch (e) {
-      const wait = e instanceof ApiError && e.retryAfter ? ` Try again in ${e.retryAfter} s.` : "";
-      setError(`${e instanceof ApiError ? e.message : "The server did not answer. Check the decisions before you repeat a trade."}${wait}`);
-      setTurns(turns);
-      setText(content);
+      const { text: advice, restore } = chatFailure(e);
+      setError(advice);
+      if (restore) {
+        setTurns(turns);
+        setText(content);
+      }
     } finally {
       setBusy(false);
       onReply?.();

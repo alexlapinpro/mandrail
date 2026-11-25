@@ -4,7 +4,7 @@
   "license": "MIT",
   "packageManager": "pnpm@10.8.0",
   "engines": {
-    "node": ">=20 <25"
+    "node": ">=20.12 <25"
   },
   "scripts": {
     "contracts:test": "pnpm --filter @mandrail/contracts test",
