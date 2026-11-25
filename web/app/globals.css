@@ -1,0 +1,49 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Road-sign palette: steel at night, one yellow, and the three signal colours. */
+:root {
+  --steel: 20 33 43;
+  --plate: 28 45 58;
+  --sunken: 15 26 34;
+  --seam: 52 75 92;
+  --paint: 236 241 244;
+  --muted: 163 183 196;
+  --signal: 240 185 11;
+  --pass: 84 201 143;
+  --stop: 255 118 104;
+  --caution: 255 160 72;
+  color-scheme: dark;
+}
+
+body {
+  @apply bg-steel font-sans text-[15px] leading-normal text-paint antialiased;
+  font-variant-numeric: tabular-nums;
+}
+
+:focus-visible {
+  outline: 2px solid rgb(var(--signal));
+  outline-offset: 2px;
+}
+
+@layer components {
+  .field {
+    @apply w-full rounded-sm border border-seam bg-sunken px-2.5 py-1.5 text-paint placeholder:text-muted/60 disabled:opacity-50;
+  }
+}
+
+/* The posts light up once, in the order the guard checks them. */
+@keyframes post-in {
+  from {
+    opacity: 0.15;
+  }
+}
+.post {
+  animation: post-in 240ms ease-out backwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .post {
+    animation: none;
+  }
+}
