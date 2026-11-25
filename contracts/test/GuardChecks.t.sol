@@ -98,6 +98,17 @@ contract GuardChecksTest is Base {
         _check(agent, asset, venue, 50e18, Reason.RISK_DATA_STALE, abi.encode(uint8(0), uint64(0), NOW, uint64(900)));
     }
 
+    function test_stale_noData_evenWithUnlimitedAge() public {
+        address asset = makeAddr("noData");
+        vm.startPrank(owner);
+        registry.setAllowedAsset(id, asset, true);
+        registry.setMaxRiskAge(id, type(uint64).max);
+        vm.stopPrank();
+        _check(
+            agent, asset, venue, 50e18, Reason.RISK_DATA_STALE, abi.encode(uint8(0), uint64(0), NOW, type(uint64).max)
+        );
+    }
+
     function test_stale_ageLimitIsInclusive() public {
         vm.warp(NOW + 900);
         _checkGold(50e18, Reason.OK, "");
@@ -136,7 +147,8 @@ contract GuardChecksTest is Base {
         _checkEquity(Reason.OK, "");
         _push(address(equity), 101e18 + 1e14, 0, 100e18, NOW);
         _checkEquity(
-            Reason.PRICE_DIVERGENCE, abi.encode(uint256(101e18 + 1e14), uint256(100e18), uint256(10_001), uint32(10_000))
+            Reason.PRICE_DIVERGENCE,
+            abi.encode(uint256(101e18 + 1e14), uint256(100e18), uint256(10_001), uint32(10_000))
         );
     }
 

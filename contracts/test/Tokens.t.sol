@@ -48,9 +48,7 @@ contract TokensTest is Test {
     function test_rwa_onlyMinter() public {
         bytes32 role = gold.MINTER_ROLE();
         vm.prank(alice);
-        vm.expectRevert(
-            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, alice, role)
-        );
+        vm.expectRevert(abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, alice, role));
         gold.mint(alice, 1e18);
 
         vm.prank(minter);

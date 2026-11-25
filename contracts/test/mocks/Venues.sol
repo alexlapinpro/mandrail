@@ -19,10 +19,7 @@ contract ShortVenue is IVenue {
         deliver = amount;
     }
 
-    function buy(address asset, uint256 usdAmount, uint256 minAssetOut, address recipient)
-        external
-        returns (uint256)
-    {
+    function buy(address asset, uint256 usdAmount, uint256 minAssetOut, address recipient) external returns (uint256) {
         usd.transferFrom(msg.sender, address(this), usdAmount);
         if (deliver != 0) TestRWA(asset).mint(recipient, deliver);
         return minAssetOut;
@@ -37,10 +34,7 @@ contract UnderTakeVenue is IVenue {
         usd = usd_;
     }
 
-    function buy(address asset, uint256 usdAmount, uint256 minAssetOut, address recipient)
-        external
-        returns (uint256)
-    {
+    function buy(address asset, uint256 usdAmount, uint256 minAssetOut, address recipient) external returns (uint256) {
         usd.transferFrom(msg.sender, address(this), usdAmount - 1);
         TestRWA(asset).mint(recipient, minAssetOut);
         return minAssetOut;

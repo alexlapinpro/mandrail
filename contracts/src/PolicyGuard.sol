@@ -234,8 +234,7 @@ contract PolicyGuard is ReentrancyGuard {
             uint256 gap = d.priceUsd > d.atlasPriceUsd ? d.priceUsd - d.atlasPriceUsd : d.atlasPriceUsd - d.priceUsd;
             uint256 gapPpm = Math.mulDiv(gap, 1e6, d.atlasPriceUsd);
             if (gapPpm > m.maxDivergencePpm) {
-                return
-                    (Reason.PRICE_DIVERGENCE, abi.encode(d.priceUsd, d.atlasPriceUsd, gapPpm, m.maxDivergencePpm));
+                return (Reason.PRICE_DIVERGENCE, abi.encode(d.priceUsd, d.atlasPriceUsd, gapPpm, m.maxDivergencePpm));
             }
         }
 
