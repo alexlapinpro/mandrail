@@ -16,6 +16,7 @@
     "test": "pnpm --filter @mandrail/web test",
     "scenarios": "pnpm --filter @mandrail/web scenarios",
     "contracts:verify": "pnpm --filter @mandrail/contracts verify",
-    "register-agent": "pnpm --filter @mandrail/web register-agent"
+    "register-agent": "pnpm --filter @mandrail/web register-agent",
+    "attacks": "pnpm --filter @mandrail/web attacks"
   }
 }

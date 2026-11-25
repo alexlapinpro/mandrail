@@ -41,7 +41,7 @@ export function ActionCard({ action }: { action: Action }) {
             </div>
             <Rail reason={reason} />
             {reason !== 0 && <p>{r.explanation}</p>}
-            {reason === 0 && <p>Bought at {r.price}. The tokens went straight to the owner.</p>}
+            {reason === 0 && <p>Bought {r.bought} at {r.price}. The tokens went straight to the owner.</p>}
             <TxLink hash={r.hash as string} />
           </div>
         </Card>

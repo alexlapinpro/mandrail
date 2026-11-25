@@ -34,6 +34,12 @@ export function formatUsd(wei: bigint): string {
   return `$${dollars}.${(cents % 100n).toString().padStart(2, "0")}`;
 }
 
+/** Token amount with six decimals, cut off rather than rounded up. */
+export function formatQuantity(wei: bigint): string {
+  const micro = wei / 10n ** 12n;
+  return `${micro / 1_000_000n}.${(micro % 1_000_000n).toString().padStart(6, "0")}`;
+}
+
 export function formatPpm(ppm: bigint): string {
   return `${formatUnits(ppm, 4)}%`;
 }

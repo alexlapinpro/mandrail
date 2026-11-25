@@ -3,6 +3,7 @@ import { AzureOpenAI } from "openai";
 import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
 import { requireEnv } from "../clients";
 import { singleton } from "../singleton";
+import { ContentFilterError } from "./errors";
 import type { ToolSchema } from "./tools";
 
 export interface ToolCall {
@@ -55,15 +56,21 @@ export const azureModel = (): ModelClient =>
     });
     return {
       async complete({ messages, tools }) {
-        const response = await client.chat.completions.create({
+        const response = await client.chat.completions
+          .create({
           model: deployment,
           messages: messages.map(toOpenAi),
           tools: tools.map((tool) => ({
             type: "function" as const,
             function: { name: tool.name, description: tool.description, parameters: { ...tool.parameters } },
           })),
-        });
-        const message = response.choices[0]?.message;
+        })
+          .catch((error: { code?: string }) => {
+            throw error.code === "content_filter" ? new ContentFilterError() : error;
+          });
+        const choice = response.choices[0];
+        if (choice?.finish_reason === "content_filter") throw new ContentFilterError();
+        const message = choice?.message;
         return {
           content: message?.content ?? null,
           toolCalls: (message?.tool_calls ?? []).flatMap((call) =>

@@ -1,4 +1,5 @@
 import { access } from "@/lib/access";
+import { ContentFilterError, FILTER_MESSAGE } from "@/lib/agent/errors";
 import { parseMessages } from "@/lib/agent/messages";
 import { ModelLimitError, runAgent } from "@/lib/agent/run";
 import { agentDeps } from "@/lib/agent/wiring";
@@ -30,6 +31,7 @@ export async function POST(request: Request): Promise<Response> {
     const mandateId = BigInt(claim.mandateId);
     return json(await runAgent({ mode: "owner", mandateId, messages, deps: agentDeps("owner", mandateId) }));
   } catch (error) {
+    if (error instanceof ContentFilterError) return fail(422, FILTER_MESSAGE);
     if (error instanceof ModelLimitError) return fail(429, "The daily model limit is reached.");
     logError("chat", error);
     return fail(502, "The model is not available right now. Nothing was traded.");

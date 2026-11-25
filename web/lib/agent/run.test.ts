@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { TradeResult } from "../trade";
 import type { ModelClient, ModelReply } from "./client";
+import { ContentFilterError } from "./errors";
 import { runAgent, type AgentDeps, type ChatMessage } from "./run";
 import { toolSchemas } from "./tools";
 
@@ -141,6 +142,17 @@ describe("agent run", () => {
     },
   );
 
+  it("gives the model and the user a readable quantity, not raw units", async () => {
+    const { run } = setup([call("execute_trade", { ...BUY, usdAmount: "50" }), say("ok")], {
+      execute: vi.fn(async (): Promise<TradeResult> => ({
+        status: "executed", hash: "0x1", reason: 0, context: "0x", assetOut: 14010647915186562n, priceUsd: 3568n * E,
+      })),
+    });
+    const { result } = (await run(user("Buy $50 of gold"))).actions[0]!;
+    expect(result).toMatchObject({ bought: "0.014010 tGOLD", price: "$3,568.00" });
+    expect(JSON.stringify(result)).not.toContain("14010647915186562");
+  });
+
   it("a reverted transaction is failed, never blocked", async () => {
     const { run } = setup([call("execute_trade", BUY), say("ok")], {
       execute: vi.fn(async (): Promise<TradeResult> => ({ status: "failed", hash: "0xdead" })),
@@ -198,6 +210,26 @@ describe("agent run", () => {
     const result = await run(user("Buy $150 of gold"));
     expect(result.actions).toHaveLength(1);
     expect(result.message).not.toContain("azure");
+  });
+
+  it("keeps finished trades visible when the filter stops a later step", async () => {
+    const model = { complete: vi.fn() };
+    model.complete.mockResolvedValueOnce(call("execute_trade", BUY)).mockRejectedValueOnce(new ContentFilterError());
+    const { run } = setup([], { model });
+    const result = await run(user("Buy $150 of gold"));
+    expect(result.actions).toHaveLength(1);
+    expect(result.message).toMatch(/filter/i);
+  });
+
+  it("never answers with nothing at all", async () => {
+    const { run } = setup([{ content: null, toolCalls: [] }]);
+    expect((await run(user("hi"))).message).toMatch(/no answer/i);
+  });
+
+  it("tells the challenge agent what counts as inside the mandate", async () => {
+    const { run, seen } = setup([say("ok")]);
+    await run(user("hi"), "challenge");
+    expect(seen[0]!.messages[0]!.content).toMatch(/\$5 per trade.*\$50 per day/);
   });
 
   it("challenge mode passes any venue address and a zero minimum through", async () => {

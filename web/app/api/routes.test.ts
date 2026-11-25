@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { ContentFilterError } from "@/lib/agent/errors";
 import { ModelLimitError } from "@/lib/agent/run";
 import { createRateLimit } from "@/lib/rateLimit";
 
@@ -100,6 +101,13 @@ describe("POST /api/chat", () => {
   it("says when the daily model limit is reached", async () => {
     mocks.runAgent.mockRejectedValue(new ModelLimitError());
     expect((await chat(ask())).status).toBe(429);
+  });
+
+  it("says plainly when the model provider's filter refuses the wording", async () => {
+    mocks.runAgent.mockRejectedValue(new ContentFilterError());
+    const response = await chat(ask());
+    expect(response.status).toBe(422);
+    expect((await response.json()).error).toMatch(/filter.*nothing was sent/i);
   });
 
   it("hides internal errors", async () => {

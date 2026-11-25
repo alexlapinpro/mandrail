@@ -1,3 +1,4 @@
+import { ContentFilterError, FILTER_MESSAGE } from "@/lib/agent/errors";
 import { parseMessages } from "@/lib/agent/messages";
 import { ModelLimitError, runAgent } from "@/lib/agent/run";
 import { agentDeps } from "@/lib/agent/wiring";
@@ -29,6 +30,7 @@ export async function POST(request: Request): Promise<Response> {
     const mandateId = BigInt(deployment.challengeMandateId);
     return json(await runAgent({ mode: "challenge", mandateId, messages, deps: agentDeps("challenge", mandateId) }));
   } catch (error) {
+    if (error instanceof ContentFilterError) return fail(422, FILTER_MESSAGE);
     if (error instanceof ModelLimitError) return fail(503, "Today's attempts are used up. The results stay visible.");
     logError("break", error);
     return fail(502, "The agent is not available right now.");
