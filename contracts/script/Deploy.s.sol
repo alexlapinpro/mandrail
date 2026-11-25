@@ -87,6 +87,7 @@ contract Deploy is Script {
         vm.serializeAddress(k, "market", address(d.market));
         vm.serializeAddress(k, "rogueVenue", address(d.rogue));
         vm.serializeAddress(k, "identityRegistry", identity);
+        vm.serializeUint(k, "agentIdentityId", 0);
         string memory json = vm.serializeUint(k, "challengeMandateId", 0);
         string memory path = deploymentPath();
         vm.writeJson(json, path);

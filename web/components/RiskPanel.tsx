@@ -92,6 +92,30 @@ function AssetRisk({ asset, mandate, now }: { asset: RiskView["assets"][number];
             <span>{formatPpm(BigInt(cmc.change24hPpm))}</span>
           </li>
           {gap !== null && <Breaker label="CMC and Atlas gap" value={gap} limit={mandate?.maxDivergencePpm} />}
+          {asset.atlasFeed && (
+            <li className="flex justify-between gap-3">
+              <span className="text-muted">US market</span>
+              <span className={!asset.marketOpen && mandate?.requireMarketOpen ? "text-stop" : ""}>
+                {asset.marketOpen ? "open" : mandate?.requireMarketOpen ? "closed, trades stop" : "closed"}
+              </span>
+            </li>
+          )}
+          {asset.mainnet && (
+            <li className="flex justify-between gap-3">
+              <a
+                className="text-signal underline underline-offset-2"
+                href={`https://bscscan.com/address/${asset.mainnet.address}`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                BSC mainnet check
+              </a>
+              <span className={asset.mainnet.reason === "OK" ? "text-pass" : "text-stop"}>
+                {asset.mainnet.reason === "OK" ? "passed" : asset.mainnet.reason.toLowerCase().replaceAll("_", " ")}, gap{" "}
+                {formatPpm(BigInt(asset.mainnet.gapPpm))} of {formatPpm(BigInt(asset.mainnet.maxDivergencePpm))}
+              </span>
+            </li>
+          )}
         </ul>
       )}
     </div>

@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "attester": "tsx --tsconfig tsconfig.scripts.json scripts/attester.ts",
     "scenarios": "tsx --tsconfig tsconfig.scripts.json scripts/scenarios.ts",
-    "export-abi": "tsx scripts/export-abi.ts"
+    "export-abi": "tsx scripts/export-abi.ts",
+    "register-agent": "tsx --tsconfig tsconfig.scripts.json scripts/register-agent.ts"
   },
   "dependencies": {
     "@tanstack/react-query": "5.108.4",

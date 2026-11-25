@@ -16,6 +16,9 @@ const DEFAULT_RPC = "https://data-seed-prebsc-1-s1.bnbchain.org:8545";
 const DEFAULT_LOGS_RPC = "https://bsc-testnet-rpc.publicnode.com";
 const DEFAULT_MAINNET_RPC = "https://bsc-rpc.publicnode.com";
 
+/** Next.js stores fetch answers on disk by default. Chain state must always be read fresh. */
+const NO_CACHE = { cache: "no-store" } as const;
+
 export function requireEnv(name: string): string {
   const value = process.env[name];
   if (!value) throw new Error(`Missing environment variable ${name}`);
@@ -38,7 +41,7 @@ const testnetClient = (name: string, variable: string, fallback: string): Public
     createPublicClient({
       chain: bscTestnet,
       pollingInterval: 500,
-      transport: http(process.env[variable] || fallback, { timeout: 10_000 }),
+      transport: http(process.env[variable] || fallback, { timeout: 10_000, fetchOptions: NO_CACHE }),
     }),
   ) as PublicClient;
 
@@ -52,6 +55,6 @@ export const mainnetClient = (): PublicClient =>
   singleton("mainnetClient", () =>
     createPublicClient({
       chain: bsc,
-      transport: http(process.env.BSC_MAINNET_RPC_URL || DEFAULT_MAINNET_RPC, { timeout: 5_000, retryCount: 1 }),
+      transport: http(process.env.BSC_MAINNET_RPC_URL || DEFAULT_MAINNET_RPC, { timeout: 5_000, retryCount: 1, fetchOptions: NO_CACHE }),
     }),
   ) as PublicClient;

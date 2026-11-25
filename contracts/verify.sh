@@ -5,6 +5,9 @@ cd "$(dirname "$0")" || exit 1
 set -a
 . ../.env
 set +a
+if [ "$1" != sourcify ] && [ -z "$BSCSCAN_API_KEY" ]; then
+  echo "Set BSCSCAN_API_KEY in .env, or run: pnpm verify sourcify" && exit 1
+fi
 run=broadcast/Deploy.s.sol/97/run-latest.json
 
 python3 - "$run" <<'EOF' | while read -r address name args; do

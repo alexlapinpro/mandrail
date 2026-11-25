@@ -141,6 +141,22 @@ export function MandateControls({ mandate: m, walletBalance }: { mandate: Mandat
               </label>
             ))}
           </fieldset>
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              className="accent-signal"
+              disabled={locked}
+              checked={m.requireMarketOpen}
+              onChange={(e) =>
+                tx.run("hours", e.target.checked ? "Stock tokens trade only in US market hours." : "Market hours check off.", {
+                  ...registry,
+                  functionName: "setRequireMarketOpen",
+                  args: [id, e.target.checked],
+                })
+              }
+            />
+            Stock tokens only while the US market is open
+          </label>
           <Field label="Jurisdiction">
             <select
               className="field"

@@ -14,6 +14,8 @@
     "build": "pnpm --filter @mandrail/web build",
     "start": "pnpm --filter @mandrail/web start",
     "test": "pnpm --filter @mandrail/web test",
-    "scenarios": "pnpm --filter @mandrail/web scenarios"
+    "scenarios": "pnpm --filter @mandrail/web scenarios",
+    "contracts:verify": "pnpm --filter @mandrail/contracts verify",
+    "register-agent": "pnpm --filter @mandrail/web register-agent"
   }
 }

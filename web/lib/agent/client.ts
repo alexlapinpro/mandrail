@@ -50,6 +50,8 @@ export const azureModel = (): ModelClient =>
       deployment,
       timeout: 30_000,
       maxRetries: 1,
+      // Without this Next.js may answer a repeated prompt from its disk cache.
+      fetchOptions: { cache: "no-store" },
     });
     return {
       async complete({ messages, tools }) {

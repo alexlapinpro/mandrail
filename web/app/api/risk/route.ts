@@ -1,10 +1,11 @@
-import { riskOracleAbi } from "@/lib/abi";
+import { marketCalendarAbi, riskOracleAbi } from "@/lib/abi";
 import { ASSET_LIST } from "@/lib/assets";
 import { atlas } from "@/lib/atlas";
 import { attester } from "@/lib/attester";
 import { publicClient } from "@/lib/clients";
 import { deployment } from "@/lib/deployment";
 import { fail, json, logError } from "@/lib/http";
+import { mainnetCheck } from "@/lib/mainnetCheck";
 import { gapPpm } from "@/lib/units";
 
 export const runtime = "nodejs";
@@ -18,7 +19,7 @@ export async function GET(): Promise<Response> {
   try {
     const assets = await Promise.all(
       ASSET_LIST.map(async (asset) => {
-        const [risk, live] = await Promise.all([
+        const [risk, live, marketOpen] = await Promise.all([
           publicClient().readContract({
             address: deployment.riskOracle,
             abi: riskOracleAbi,
@@ -26,6 +27,12 @@ export async function GET(): Promise<Response> {
             args: [asset.address],
           }),
           asset.atlasFeedId === null ? null : atlas().getAtlas(asset.atlasFeedId),
+          publicClient().readContract({
+            address: deployment.marketCalendar,
+            abi: marketCalendarAbi,
+            functionName: "isOpen",
+            args: [asset.address, BigInt(Math.floor(Date.now() / 1000))],
+          }),
         ]);
         const hasCmc = risk.sourceTimestamp > 0n;
         const hasAtlas = risk.atlasTimestamp > 0n;
@@ -43,6 +50,8 @@ export async function GET(): Promise<Response> {
             : null,
           atlasFeed: asset.atlasFeedId !== null,
           atlas: hasAtlas ? { price: risk.atlasPriceUsd, timestamp: risk.atlasTimestamp } : null,
+          marketOpen,
+          mainnet: hasCmc && asset.atlasFeedId !== null ? await mainnetCheck().run(asset.atlasFeedId, risk.priceUsd) : null,
           atlasLive: live,
           gapPpm: hasCmc && hasAtlas ? gapPpm(risk.priceUsd, risk.atlasPriceUsd) : null,
         };

@@ -4,6 +4,7 @@ import { hexToString } from "viem";
 import type { MandateView } from "@/hooks/useMandate";
 import { useNow } from "@/hooks/useNow";
 import { countdownText } from "@/lib/time";
+import { identityUrl } from "@/lib/deployment";
 import { formatPpm, formatUsd } from "@/lib/units";
 
 const strong = "font-semibold text-paint";
@@ -47,6 +48,15 @@ export function MandateSummary({ mandate: m }: { mandate: MandateView }) {
           <> The mandate {Number(m.expiresAt) <= now ? "has expired" : `expires in ${countdownText(Number(m.expiresAt) - now)}`}.</>
         )}
       </p>
+      {m.agentRegistryId > 0n && (
+        <p className="text-sm text-muted">
+          Agent identity{" "}
+          <a className="text-signal underline underline-offset-2" href={identityUrl(m.agentRegistryId)} target="_blank" rel="noreferrer">
+            {m.agentRegistryId.toString()}
+          </a>{" "}
+          in the ERC-8004 registry, checked when the mandate was created
+        </p>
+      )}
 
       <div>
         <div className="flex items-baseline justify-between">

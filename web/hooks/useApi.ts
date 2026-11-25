@@ -29,6 +29,8 @@ export interface RiskView {
     atlas: { price: string; timestamp: string } | null;
     atlasLive: { price: string; timestamp: number } | null;
     gapPpm: string | null;
+    marketOpen: boolean;
+    mainnet: { address: string; reason: string; gapPpm: string; maxDivergencePpm: number } | null;
   }[];
 }
 

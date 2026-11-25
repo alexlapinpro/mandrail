@@ -12,7 +12,10 @@ import { Button, Field, Notice } from "./ui";
 export function MandateCreate({ onCreated }: { onCreated: () => void }) {
   const agent = useAgentAddress();
   const tx = useTx();
-  const [form, setForm] = useState<MandateForm>(DEFAULT_FORM);
+  const [form, setForm] = useState<MandateForm>({
+    ...DEFAULT_FORM,
+    identityId: deployment.agentIdentityId ? String(deployment.agentIdentityId) : "",
+  });
   const [errors, setErrors] = useState<FormErrors>({});
   const full = { ...form, agent: form.agent || agent.data?.agent || "" };
   const set = <K extends keyof MandateForm>(key: K, value: MandateForm[K]) => {
@@ -85,6 +88,17 @@ export function MandateCreate({ onCreated }: { onCreated: () => void }) {
           <input type="datetime-local" className="field" value={form.expires} onChange={(e) => set("expires", e.target.value)} />
         </Field>
       </div>
+      <Field
+        label="Agent identity, ERC-8004"
+        error={errors.identityId}
+        hint="The registry must list this agent address for the identity. Leave it empty to skip the check."
+      >
+        {input("identityId", "none")}
+      </Field>
+      <label className="flex items-center gap-2">
+        <input type="checkbox" className="accent-signal" checked={form.requireMarketOpen} onChange={(e) => set("requireMarketOpen", e.target.checked)} />
+        Stock tokens only while the US market is open
+      </label>
       <Button tone="signal" type="submit" disabled={!!tx.busy} className="w-full">
         {tx.busy ? "Waiting for wallet" : "Create mandate"}
       </Button>
