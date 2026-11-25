@@ -94,6 +94,6 @@ contract Deploy is Script {
     }
 
     function deploymentPath() public view returns (string memory) {
-        return block.chainid == 97 ? "deployments/bsc-testnet.json" : "deployments/local.json";
+        return vm.envOr("DEPLOYMENT_PATH", string("deployments/bsc-testnet.json"));
     }
 }

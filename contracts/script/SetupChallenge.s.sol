@@ -12,7 +12,7 @@ contract SetupChallenge is Script {
     uint256 constant DEPOSIT = 200e18;
 
     function run() external {
-        string memory path = block.chainid == 97 ? "deployments/bsc-testnet.json" : "deployments/local.json";
+        string memory path = vm.envOr("DEPLOYMENT_PATH", string("deployments/bsc-testnet.json"));
         string memory json = vm.readFile(path);
         uint256 id = setup(
             vm.envUint("DEPLOYER_PRIVATE_KEY"),

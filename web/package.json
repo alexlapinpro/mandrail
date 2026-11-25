@@ -1,0 +1,35 @@
+{
+  "name": "@mandrail/web",
+  "private": true,
+  "license": "MIT",
+  "scripts": {
+    "dev": "node --env-file-if-exists=../.env ./node_modules/next/dist/bin/next dev",
+    "build": "next build",
+    "start": "next start -p ${PORT:-3000}",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "attester": "tsx --env-file-if-exists=../.env --conditions=react-server scripts/attester.ts",
+    "scenarios": "tsx --env-file-if-exists=../.env --conditions=react-server scripts/scenarios.ts",
+    "export-abi": "tsx scripts/export-abi.ts"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "5.108.4",
+    "next": "14.2.35",
+    "openai": "5.23.2",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "viem": "2.58.6",
+    "wagmi": "2.19.5"
+  },
+  "devDependencies": {
+    "@types/node": "20.19.43",
+    "@types/react": "18.3.12",
+    "@types/react-dom": "18.3.1",
+    "autoprefixer": "10.7.0",
+    "postcss": "8.5.33",
+    "tailwindcss": "3.4.19",
+    "tsx": "4.23.15",
+    "typescript": "5.9.3",
+    "vitest": "3.2.7"
+  }
+}
