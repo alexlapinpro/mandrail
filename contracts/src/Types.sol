@@ -39,3 +39,35 @@ struct RiskInput {
     uint256 atlasPriceUsd;
     uint64 atlasTimestamp;
 }
+
+/// @notice Rules an owner sets for one agent. USD amounts use 1e18.
+struct Mandate {
+    address owner;
+    address agent;
+    bytes2 jurisdiction; // ISO 3166-1 alpha-2, e.g. "SG"
+    uint256 maxPerTradeUsd;
+    uint256 maxPerPeriodUsd;
+    uint64 periodSeconds;
+    uint32 maxVolatilityPpm; // 0 = breaker off
+    uint32 maxDivergencePpm; // 0 = breaker off
+    uint64 maxRiskAgeSeconds;
+    uint64 expiresAt; // 0 = no expiry
+    bool requireMarketOpen;
+    bool active;
+    uint256 agentRegistryId; // ERC-8004 agent id, 0 = not set
+}
+
+struct MandateParams {
+    address agent;
+    bytes2 jurisdiction;
+    uint256 maxPerTradeUsd;
+    uint256 maxPerPeriodUsd;
+    uint64 periodSeconds;
+    uint32 maxVolatilityPpm;
+    uint32 maxDivergencePpm;
+    uint64 maxRiskAgeSeconds;
+    uint64 expiresAt;
+    bool requireMarketOpen;
+    uint256 agentRegistryId;
+    address[] allowedAssets;
+}
