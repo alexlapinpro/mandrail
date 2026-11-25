@@ -9,3 +9,4 @@ contracts/broadcast/
 *.tsbuildinfo
 .superpowers/
 .DS_Store
+contracts/deployments/local.json
