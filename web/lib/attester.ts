@@ -41,6 +41,8 @@ export interface Attester {
   pushNow(trigger: string): Promise<PushResult>;
   /** Pushes when the on-chain quote is getting old. Never throws: a trade may go on without it. */
   ensureFresh(trigger?: string): Promise<void>;
+  /** Outcome of the latest attempt, for the UI. */
+  last(): { status: PushResult["status"]; at: number } | null;
 }
 
 const COOLDOWN_MS = 30_000;
@@ -53,6 +55,7 @@ export function createAttester(deps: Deps): Attester {
   let day = -1;
   let pushesToday = 0;
   let inFlight: Promise<PushResult> | null = null;
+  let last: { status: PushResult["status"]; at: number } | null = null;
 
   async function push(trigger: string): Promise<PushResult> {
     const quotes = await deps.getQuotes(deps.assets.map((a) => a.cmcId));
@@ -109,8 +112,13 @@ export function createAttester(deps: Deps): Attester {
     pushesToday++;
     inFlight = push(trigger)
       .catch((error: Error): PushResult => {
-        deps.log(`[attester] trigger=${trigger} failed: ${error.message}`);
+        // RPC errors can carry URLs and request bodies, so only their kind is logged.
+        deps.log(`[attester] trigger=${trigger} failed: ${error.name}`);
         return { status: "failed", error: error.message };
+      })
+      .then((result) => {
+        last = { status: result.status, at: Math.floor(deps.now() / 1000) };
+        return result;
       })
       .finally(() => {
         inFlight = null;
@@ -120,11 +128,12 @@ export function createAttester(deps: Deps): Attester {
 
   return {
     pushNow,
+    last: () => last,
     async ensureFresh(trigger = "trade") {
       try {
         if (inFlight || (await deps.sourceAge()) > FRESH_SECONDS) await pushNow(trigger);
       } catch (error) {
-        deps.log(`[attester] freshness check failed: ${(error as Error).message}`);
+        deps.log(`[attester] freshness check failed: ${(error as Error).name}`);
       }
     },
   };

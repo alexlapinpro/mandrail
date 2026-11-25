@@ -89,7 +89,7 @@ export function createAudit(deps: Deps): Audit {
       stale = false;
     } catch (error) {
       stale = true;
-      console.warn(`[audit] refresh failed: ${(error as Error).message.split("\n")[0]}`);
+      console.warn(`[audit] refresh failed: ${(error as Error).name}`);
     }
   }
 

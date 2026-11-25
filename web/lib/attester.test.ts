@@ -134,6 +134,19 @@ describe("attester", () => {
     expect(await attester.pushNow("loop")).toEqual({ status: "failed", error: "rpc down" });
   });
 
+  it("remembers the last outcome without error details", async () => {
+    const { attester, deps, logs, advance } = setup();
+    expect(attester.last()).toBeNull();
+    await attester.pushNow("loop");
+    expect(attester.last()).toEqual({ status: "pushed", at: 1_795_618_800 });
+    advance(30);
+    deps.send.mockRejectedValueOnce(new Error("secret url"));
+    await attester.pushNow("loop");
+    expect(attester.last()).toEqual({ status: "failed", at: 1_795_618_830 });
+    expect(logs.join("\n")).toMatch(/failed/);
+    expect(logs.join("\n")).not.toContain("secret url");
+  });
+
   it("logs the CMC last_updated of each asset and the tx", async () => {
     const { attester, logs } = setup();
     await attester.pushNow("loop");

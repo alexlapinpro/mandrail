@@ -3,13 +3,13 @@
   "private": true,
   "license": "MIT",
   "scripts": {
-    "dev": "node --env-file-if-exists=../.env ./node_modules/next/dist/bin/next dev",
+    "dev": "next dev",
     "build": "next build",
     "start": "next start -p ${PORT:-3000}",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "attester": "tsx --env-file-if-exists=../.env --conditions=react-server scripts/attester.ts",
-    "scenarios": "tsx --env-file-if-exists=../.env --conditions=react-server scripts/scenarios.ts",
+    "attester": "tsx --tsconfig tsconfig.scripts.json scripts/attester.ts",
+    "scenarios": "tsx --tsconfig tsconfig.scripts.json scripts/scenarios.ts",
     "export-abi": "tsx scripts/export-abi.ts"
   },
   "dependencies": {
