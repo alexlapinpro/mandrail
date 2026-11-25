@@ -207,6 +207,22 @@ contract MandateRegistryTest is Test {
         _expectInvalid(p);
     }
 
+    function test_jurisdiction_mustBeTwoUppercaseLetters() public {
+        uint256 id = _create();
+        bytes2[6] memory bad = [bytes2(0), bytes2("us"), bytes2("Us"), bytes2("U"), bytes2("U1"), bytes2("[S")];
+        for (uint256 i; i < bad.length; ++i) {
+            MandateParams memory p = _params();
+            p.jurisdiction = bad[i];
+            _expectInvalid(p);
+            vm.prank(owner);
+            vm.expectRevert(MandateRegistry.InvalidParams.selector);
+            registry.setJurisdiction(id, bad[i]);
+        }
+        vm.prank(owner);
+        registry.setJurisdiction(id, "AZ");
+        assertEq(registry.getMandate(id).jurisdiction, bytes2("AZ"));
+    }
+
     function test_unknownMandateReverts() public {
         vm.expectRevert(abi.encodeWithSelector(MandateRegistry.UnknownMandate.selector, 0));
         registry.getMandate(0);

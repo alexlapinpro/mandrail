@@ -48,6 +48,8 @@ contract RiskOracle is AccessControl {
     function updateBatch(address[] calldata assets, RiskInput[] calldata inputs) external onlyRole(ATTESTER_ROLE) {
         if (assets.length != inputs.length) revert LengthMismatch();
         for (uint256 i; i < assets.length; ++i) {
+            // One late quote must not stop the other assets; the stored newer one stays.
+            if (inputs[i].sourceTimestamp < _risk[assets[i]].sourceTimestamp) continue;
             _update(assets[i], inputs[i]);
         }
     }

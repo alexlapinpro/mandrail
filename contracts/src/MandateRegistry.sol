@@ -42,6 +42,7 @@ contract MandateRegistry {
         if (p.agent == address(0) || p.maxRiskAgeSeconds == 0) revert InvalidParams();
         if (p.expiresAt != 0 && p.expiresAt <= block.timestamp) revert InvalidParams();
         _checkLimits(p.maxPerTradeUsd, p.maxPerPeriodUsd, p.periodSeconds);
+        _checkJurisdiction(p.jurisdiction);
         _checkIdentity(p.agentRegistryId, p.agent);
 
         id = ++mandateCount;
@@ -85,6 +86,7 @@ contract MandateRegistry {
     }
 
     function setJurisdiction(uint256 id, bytes2 jurisdiction) external onlyOwner(id) {
+        _checkJurisdiction(jurisdiction);
         _mandates[id].jurisdiction = jurisdiction;
         emit MandateUpdated(id);
     }
@@ -141,6 +143,13 @@ contract MandateRegistry {
 
     function _checkLimits(uint256 maxPerTradeUsd, uint256 maxPerPeriodUsd, uint64 periodSeconds) private pure {
         if (maxPerTradeUsd == 0 || maxPerPeriodUsd == 0 || periodSeconds == 0) revert InvalidParams();
+    }
+
+    /// @dev Restrictions match exact bytes, so "us" or an empty code would slip past a rule for "US".
+    function _checkJurisdiction(bytes2 code) private pure {
+        for (uint256 i; i < 2; ++i) {
+            if (code[i] < "A" || code[i] > "Z") revert InvalidParams();
+        }
     }
 
     function _checkIdentity(uint256 agentRegistryId, address agent) private view {

@@ -101,6 +101,21 @@ contract RiskOracleTest is Test {
         oracle.updateBatch(assets, new RiskInput[](1));
     }
 
+    function test_updateBatch_skipsOlderQuote_updatesTheRest() public {
+        _push(_input(1e18, NOW));
+        address[] memory assets = new address[](2);
+        assets[0] = asset;
+        assets[1] = asset2;
+        RiskInput[] memory data = new RiskInput[](2);
+        data[0] = _input(9e18, NOW - 10);
+        data[1] = _input(2e18, NOW);
+        vm.prank(attester);
+        oracle.updateBatch(assets, data);
+        assertEq(oracle.getRisk(asset).priceUsd, 1e18);
+        assertEq(oracle.getRisk(asset).sourceTimestamp, NOW);
+        assertEq(oracle.getRisk(asset2).priceUsd, 2e18);
+    }
+
     function test_update_keepsAtlasWhenMissing() public {
         RiskInput memory i = _input(1e18, NOW);
         i.atlasPriceUsd = 5e18;
