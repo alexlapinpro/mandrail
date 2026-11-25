@@ -46,15 +46,15 @@ describe("audit index", () => {
     ]);
   });
 
-  it("then reads only new blocks with a 15-block overlap and no duplicates", async () => {
-    const { audit, chain, ranges } = setup([row(DEPLOY + 95)]);
+  it("then reads only new blocks with a 200-block overlap and no duplicates", async () => {
+    const { audit, chain, ranges } = setup([row(DEPLOY + 995)], DEPLOY + 1000);
     await audit.getAudit();
     chain.now = 3_000;
-    chain.head = DEPLOY + 120;
-    chain.rows.push(row(DEPLOY + 110));
+    chain.head = DEPLOY + 1020;
+    chain.rows.push(row(DEPLOY + 1010));
     const { rows } = await audit.getAudit();
-    expect(ranges[1]).toEqual([DEPLOY + 85, DEPLOY + 120]);
-    expect(ids(rows)).toEqual([`0x${DEPLOY + 110}`, `0x${DEPLOY + 95}`]);
+    expect(ranges[1]).toEqual([DEPLOY + 800, DEPLOY + 1020]);
+    expect(ids(rows)).toEqual([`0x${DEPLOY + 1010}`, `0x${DEPLOY + 995}`]);
   });
 
   it("drops a decision that a reorg removed inside the overlap", async () => {

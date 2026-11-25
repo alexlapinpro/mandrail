@@ -47,6 +47,9 @@ export interface Attester {
 
 const COOLDOWN_MS = 30_000;
 const DAILY_LIMIT = 500;
+/** Triggers anyone can cause from the browser get a share, so they cannot starve the loop and the trades. */
+const PUBLIC_TRIGGERS = ["button", "load"];
+const PUBLIC_DAILY_LIMIT = 150;
 const FRESH_SECONDS = 120;
 const DAY_MS = 86_400_000;
 
@@ -54,6 +57,7 @@ export function createAttester(deps: Deps): Attester {
   let lastAttempt = -Infinity;
   let day = -1;
   let pushesToday = 0;
+  let publicToday = 0;
   let inFlight: Promise<PushResult> | null = null;
   let last: { status: PushResult["status"]; at: number } | null = null;
 
@@ -105,11 +109,15 @@ export function createAttester(deps: Deps): Attester {
     if (today !== day) {
       day = today;
       pushesToday = 0;
+      publicToday = 0;
     }
+    const isPublic = PUBLIC_TRIGGERS.includes(trigger);
     if (pushesToday >= DAILY_LIMIT) return { status: "daily-limit" };
+    if (isPublic && publicToday >= PUBLIC_DAILY_LIMIT) return { status: "daily-limit" };
 
     lastAttempt = now;
     pushesToday++;
+    if (isPublic) publicToday++;
     inFlight = push(trigger)
       .catch((error: Error): PushResult => {
         // RPC errors can carry URLs and request bodies, so only their kind is logged.

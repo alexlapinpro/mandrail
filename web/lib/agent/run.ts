@@ -37,6 +37,7 @@ export class ModelLimitError extends Error {
 }
 
 const MAX_ROUNDS = 6;
+const MAX_TRANSACTIONS = 5;
 
 const OWNER_PROMPT = `You are a trading agent bound by an on-chain mandate on BNB Smart Chain testnet. All assets are test assets.
 You only buy. If asked to sell, withdraw or change the mandate, say that you cannot and that the owner does this in the app.
@@ -75,14 +76,15 @@ export async function runAgent({
   ];
   const order = isBuyOrder(messages.at(-1)?.content ?? "");
   let preflightBlocked = false;
-  let submitted = false;
+  let transactions = 0;
   let corrected = false;
   let sendFailed = false;
 
   async function runTrade(trade: TradeInput): Promise<Record<string, unknown>> {
     if (sendFailed) return { error: "an earlier transaction is not confirmed yet, check the audit feed first" };
+    if (transactions >= MAX_TRANSACTIONS) return { error: `at most ${MAX_TRANSACTIONS} transactions per message` };
     if (!deps.takeTransaction()) return { error: "daily transaction limit reached" };
-    submitted = true;
+    transactions++;
     try {
       return describeTrade(await deps.execute({ mandateId, ...trade }));
     } catch (error) {
@@ -138,7 +140,7 @@ export async function runAgent({
     }
 
     if (reply.toolCalls.length === 0) {
-      if (order && preflightBlocked && !submitted && !corrected) {
+      if (order && preflightBlocked && transactions === 0 && !corrected) {
         corrected = true;
         history.push({ role: "assistant", content: reply.content }, { role: "system", content: CORRECTION });
         continue;

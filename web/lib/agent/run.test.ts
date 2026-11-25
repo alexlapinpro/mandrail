@@ -160,6 +160,17 @@ describe("agent run", () => {
     expect(result.actions).toHaveLength(2);
   });
 
+  it("sends at most five transactions per message", async () => {
+    const many: ModelReply = {
+      content: null,
+      toolCalls: Array.from({ length: 30 }, (_, i) => ({ id: `${i}`, name: "execute_trade", arguments: JSON.stringify(BUY) })),
+    };
+    const { run, deps } = setup([many, say("ok")]);
+    const result = await run(user("buy 30 times"));
+    expect(deps.execute).toHaveBeenCalledTimes(5);
+    expect(result.actions[5]!.result).toEqual({ error: "at most 5 transactions per message" });
+  });
+
   it("sends no transaction when the daily budget is used up", async () => {
     const { run, deps } = setup([call("execute_trade", BUY), say("ok")], { takeTransaction: () => false });
     expect((await run(user("buy"))).actions[0]!.result).toEqual({ error: "daily transaction limit reached" });

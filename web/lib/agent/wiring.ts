@@ -16,6 +16,8 @@ const DAY_MS = 86_400_000;
 const DAILY = {
   owner: { models: 500, transactions: 200 },
   challenge: { models: 300, transactions: 200 },
+  /** Share of one mandate, so one owner cannot use up the limits of all. */
+  mandate: { models: 200, transactions: 80 },
 } as const;
 
 async function marketData(symbol: string): Promise<Record<string, unknown>> {
@@ -69,14 +71,18 @@ async function mandateInfo(id: bigint): Promise<Record<string, unknown>> {
 /** The real dependencies of an agent run. The mandate and the signing key are fixed here, on the server. */
 export function agentDeps(mode: AgentMode, mandateId: bigint): AgentDeps {
   const key = mode === "owner" ? "agent" : "challenge";
-  const daily = DAILY[mode];
+  const take = (kind: "models" | "transactions"): boolean => {
+    const limit = rateLimit();
+    if (mode === "owner" && !limit.take(`${kind}-mandate`, `${mandateId}`, DAILY.mandate[kind], DAY_MS).ok) return false;
+    return limit.take(`${kind}-${mode}`, "all", DAILY[mode][kind], DAY_MS).ok;
+  };
   return {
     model: azureModel(),
     marketData,
     mandate: () => mandateInfo(mandateId),
     preflight: (trade) => preflight({ ...trade, key }),
     execute: (trade) => execute({ ...trade, key }),
-    takeModelCall: () => rateLimit().take(`models-${mode}`, "all", daily.models, DAY_MS).ok,
-    takeTransaction: () => rateLimit().take(`transactions-${mode}`, "all", daily.transactions, DAY_MS).ok,
+    takeModelCall: () => take("models"),
+    takeTransaction: () => take("transactions"),
   };
 }

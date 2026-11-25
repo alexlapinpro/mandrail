@@ -48,7 +48,7 @@ interface Deps {
 }
 
 const CHUNK = 40_000; // the log RPC refuses 60,000
-const OVERLAP = 15;
+const OVERLAP = 200; // about 90 s, so a lagging log node cannot lose decisions
 const REFRESH_MS = 3_000;
 const NOT_AGENT = 1;
 

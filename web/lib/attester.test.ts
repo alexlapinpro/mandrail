@@ -109,6 +109,18 @@ describe("attester", () => {
     expect((await attester.pushNow("loop")).status).toBe("pushed");
   });
 
+  it("public refreshes cannot use up the pushes of the loop and trades", async () => {
+    const { attester, advance, age } = setup();
+    age.value = 999;
+    for (let i = 0; i < 150; i++) {
+      if (i % 2) await attester.ensureFresh("load");
+      else await attester.pushNow("button");
+      advance(30);
+    }
+    expect(await attester.pushNow("button")).toEqual({ status: "daily-limit" });
+    expect((await attester.pushNow("loop")).status).toBe("pushed");
+  });
+
   it("ensureFresh pushes only above 120 s of source age", async () => {
     const { attester, deps, age } = setup();
     age.value = 120;
