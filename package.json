@@ -1,0 +1,16 @@
+{
+  "name": "mandrail",
+  "private": true,
+  "license": "MIT",
+  "packageManager": "pnpm@10.8.0",
+  "engines": { "node": ">=20 <25" },
+  "scripts": {
+    "contracts:test": "pnpm --filter @mandrail/contracts test",
+    "contracts:deploy": "pnpm --filter @mandrail/contracts run deploy",
+    "attester": "pnpm --filter @mandrail/web attester",
+    "dev": "pnpm --filter @mandrail/web dev",
+    "build": "pnpm --filter @mandrail/web build",
+    "start": "pnpm --filter @mandrail/web start",
+    "test": "pnpm --filter @mandrail/web test"
+  }
+}
