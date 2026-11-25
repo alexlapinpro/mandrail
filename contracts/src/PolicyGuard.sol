@@ -6,6 +6,7 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {SignedMath} from "@openzeppelin/contracts/utils/math/SignedMath.sol";
+import {IVenue} from "./interfaces/IVenue.sol";
 import {ComplianceRegistry} from "./ComplianceRegistry.sol";
 import {MandateRegistry} from "./MandateRegistry.sol";
 import {MarketCalendar} from "./MarketCalendar.sol";
@@ -19,6 +20,8 @@ contract PolicyGuard is ReentrancyGuard {
 
     uint8 private constant SOURCE_CMC = 0;
     uint8 private constant SOURCE_ATLAS = 1;
+    /// @notice Least share of the oracle-priced amount the owner must receive, in percent.
+    uint256 public constant MIN_DELIVERY_PERCENT = 99;
 
     IERC20 public immutable usd;
     MandateRegistry public immutable registry;
@@ -33,10 +36,34 @@ contract PolicyGuard is ReentrancyGuard {
 
     mapping(uint256 mandateId => uint256) private _spent;
 
+    event TradeExecuted(
+        uint256 indexed mandateId,
+        address indexed agent,
+        address indexed asset,
+        address venue,
+        uint256 usdAmount,
+        uint256 assetOut,
+        uint256 priceUsd
+    );
+    /// @dev `agent` is the caller, so an unauthorised attempt shows who made it.
+    event TradeBlocked(
+        uint256 indexed mandateId,
+        address indexed agent,
+        address indexed asset,
+        address venue,
+        uint256 usdAmount,
+        Reason reason,
+        bytes context
+    );
     event Deposited(uint256 indexed mandateId, uint256 amount);
+    event Withdrawn(uint256 indexed mandateId, uint256 amount);
 
     error ZeroAmount();
     error NotOwner();
+    error ExceedsBalance(uint256 requested, uint256 balance);
+    error AmountTooSmall();
+    error WrongUsdTaken();
+    error TooLittleReceived(uint256 received, uint256 minimum);
 
     constructor(
         IERC20 usd_,
@@ -59,6 +86,43 @@ contract PolicyGuard is ReentrancyGuard {
         balanceOf[mandateId] += amount;
         usd.safeTransferFrom(msg.sender, address(this), amount);
         emit Deposited(mandateId, amount);
+    }
+
+    /// @notice The owner takes unused budget back at any time, also after revoking the mandate.
+    function withdraw(uint256 mandateId, uint256 amount) external nonReentrant {
+        if (amount == 0) revert ZeroAmount();
+        if (registry.getMandate(mandateId).owner != msg.sender) revert NotOwner();
+        uint256 balance = balanceOf[mandateId];
+        if (amount > balance) revert ExceedsBalance(amount, balance);
+        balanceOf[mandateId] = balance - amount;
+        usd.safeTransfer(msg.sender, amount);
+        emit Withdrawn(mandateId, amount);
+    }
+
+    /// @notice Trades within the mandate. A blocked attempt does not revert: it is recorded on-chain.
+    /// @dev Reverts only on malformed input or when the venue misbehaves.
+    function executeTrade(uint256 mandateId, address asset, address venue, uint256 usdAmount, uint256 minAssetOut)
+        external
+        nonReentrant
+        returns (bool executed, Reason reason)
+    {
+        bytes memory context;
+        (reason, context) = checkTrade(mandateId, msg.sender, asset, venue, usdAmount);
+        if (reason != Reason.OK) {
+            emit TradeBlocked(mandateId, msg.sender, asset, venue, usdAmount, reason, context);
+            return (false, reason);
+        }
+
+        Mandate memory m = registry.getMandate(mandateId);
+        _spend(mandateId, m.periodSeconds, usdAmount);
+
+        uint256 priceUsd = oracle.getRisk(asset).priceUsd;
+        uint256 floor = Math.mulDiv(usdAmount, 1e18, priceUsd) * MIN_DELIVERY_PERCENT / 100;
+        if (floor == 0) revert AmountTooSmall();
+        uint256 assetOut = _buy(asset, venue, usdAmount, Math.max(floor, minAssetOut), m.owner);
+
+        emit TradeExecuted(mandateId, msg.sender, asset, venue, usdAmount, assetOut, priceUsd);
+        return (true, Reason.OK);
     }
 
     /// @notice Amount spent in the current window. An elapsed window counts as empty.
@@ -92,6 +156,32 @@ contract PolicyGuard is ReentrancyGuard {
         if (m.requireMarketOpen && !calendar.isOpen(asset, uint64(block.timestamp))) {
             return (Reason.UNDERLYING_MARKET_CLOSED, abi.encode(asset, uint64(block.timestamp)));
         }
+    }
+
+    function _spend(uint256 mandateId, uint64 periodSeconds, uint256 usdAmount) private {
+        if (block.timestamp >= periodStart[mandateId] + periodSeconds) {
+            periodStart[mandateId] = block.timestamp;
+            _spent[mandateId] = 0;
+        }
+        _spent[mandateId] += usdAmount;
+        balanceOf[mandateId] -= usdAmount;
+    }
+
+    /// @dev Trusts balances, not the venue's return value.
+    function _buy(address asset, address venue, uint256 usdAmount, uint256 minOut, address recipient)
+        private
+        returns (uint256 received)
+    {
+        uint256 usdBefore = usd.balanceOf(address(this));
+        uint256 assetBefore = IERC20(asset).balanceOf(recipient);
+
+        usd.forceApprove(venue, usdAmount);
+        IVenue(venue).buy(asset, usdAmount, minOut, recipient);
+        usd.forceApprove(venue, 0);
+
+        if (usd.balanceOf(address(this)) + usdAmount != usdBefore) revert WrongUsdTaken();
+        received = IERC20(asset).balanceOf(recipient) - assetBefore;
+        if (received < minOut) revert TooLittleReceived(received, minOut);
     }
 
     function _checkAuthority(Mandate memory m, uint256 mandateId, address caller, address asset, address venue)
