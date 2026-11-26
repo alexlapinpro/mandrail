@@ -215,6 +215,11 @@ describe("GET /api/health", () => {
   it("is cheap and public", async () => {
     expect(await (await health(new Request("http://localhost/api/health"))).json()).toEqual({ ok: true });
   });
+  it("names the deployed commit, so a deployment can be checked from outside", async () => {
+    process.env.RAILWAY_GIT_COMMIT_SHA = "825b5124977e2c67bc33d6f18b2006b844440b91";
+    expect(await (await health(new Request("http://localhost/api/health"))).json()).toEqual({ ok: true, commit: "825b512" });
+    delete process.env.RAILWAY_GIT_COMMIT_SHA;
+  });
   it("shows a caller its own address headers, to check the proxy", async () => {
     const request = new Request("http://localhost/api/health?ip", { headers: { "x-forwarded-for": "6.6.6.6, 1.2.3.4", "x-real-ip": "1.2.3.4" } });
     expect(await (await health(request)).json()).toEqual({ ok: true, forwardedFor: "6.6.6.6, 1.2.3.4", realIp: "1.2.3.4", limitKey: "1.2.3.4" });
