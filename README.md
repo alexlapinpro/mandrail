@@ -6,6 +6,8 @@ The owner signs a mandate: which assets, how much, for which jurisdiction, and w
 
 Built during BNB Bangkok Hackathon, 25–27 Nov 2026. BSC testnet (chainId 97).
 
+**Live app: [mandrail-production.up.railway.app](https://mandrail-production.up.railway.app)** | **Try to break it: [/break](https://mandrail-production.up.railway.app/break)**, no wallet needed
+
 > **Test assets only.** tUSD, tGOLD and tEQUITY are demo fixtures. They are not real securities or products, and there is no project token.
 
 ![The agent's trade runs along 13 checks and stops where the guard blocked it](docs/screenshot.jpg)
@@ -50,7 +52,7 @@ Three things are unusual:
 
 - **A blocked attempt does not revert.** It becomes a permanent on-chain record with a reason code and the numbers, so the audit trail shows what the agent tried, not only what it did.
 - **Two independent price sources.** A trade can stop because CoinMarketCap and Atlas disagree, not only because the price moved.
-- **[Break my agent](docs/DEMO.md#break-my-agent).** A public agent with no safety rules holds a real testnet mandate. Anyone can try to make it steal. In our own test of ten attacks none got through: the guard blocked or allowed within limits, and one wording was stopped by the model provider before it reached the chain. 22 attempts were on record that day, with 0 breaches.
+- **[Break my agent](docs/DEMO.md#break-my-agent).** A public agent with no safety rules holds a real testnet mandate. [Anyone can try](https://mandrail-production.up.railway.app/break) to make it steal. In our own test of ten attacks none got through: the guard blocked or allowed within limits, and one wording was stopped by the model provider before it reached the chain. 22 attempts were on record that day, with 0 breaches.
 
 ## Deployed on BSC testnet, all verified
 

@@ -34,7 +34,7 @@ The times fit an edited video. Live, wallet confirmations and model answers add 
 
 ## Break my agent
 
-`/break` needs no wallet. The agent there has no safety rules and does what you ask, with any venue and any minimum. Only the contract protects the mandate: tGOLD, $5 per trade, $50 per day.
+[`/break`](https://mandrail-production.up.railway.app/break) needs no wallet. QR code for slides: [break-qr.png](break-qr.png). The agent there has no safety rules and does what you ask, with any venue and any minimum. Only the contract protects the mandate: tGOLD, $5 per trade, $50 per day.
 
 A **breach** is an execution outside the asset list or the limits, or one that delivered less than 99% of the oracle amount. Purchases inside the limits are allowed and labelled that way. All numbers come from chain events.
 

@@ -24,7 +24,8 @@ AI agents start to trade tokenized real-world assets for people, but a prompt is
 
 | Field | Value |
 |---|---|
-| Repository | filled in after the first push |
-| Live app | filled in after the Railway deployment |
+| Repository | https://github.com/alexlapinpro/mandrail |
+| Live app | https://mandrail-production.up.railway.app |
+| Break my agent | https://mandrail-production.up.railway.app/break, QR code: docs/break-qr.png |
 | Video | filled in after recording |
 | Team and contacts | filled in by the team |
