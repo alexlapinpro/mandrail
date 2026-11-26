@@ -11,7 +11,8 @@ import { MarketStrip } from "./app/MarketStrip";
 import { Rules } from "./app/Rules";
 import { SetupWizard } from "./app/SetupWizard";
 import { ChatPanel } from "./ChatPanel";
-import { Card, Notice } from "./ui";
+import { MandateCreate } from "./MandateCreate";
+import { Button, Card, Notice } from "./ui";
 
 export function Workspace() {
   const { address, chainId } = useAccount();
@@ -22,6 +23,8 @@ export function Workspace() {
   const mandates = useMandates(owner);
   const usd = useTestUsd(owner);
   const [picked, setPicked] = useState<bigint | null>(null);
+  const [creating, setCreating] = useState(false);
+  useEffect(() => setCreating(false), [owner]);
   const ids = mandates.data ?? [];
   const selected = picked !== null && ids.includes(picked) ? picked : (ids.at(-1) ?? null);
   const { mandate } = useMandate(selected);
@@ -36,6 +39,16 @@ export function Workspace() {
   const wanted = needsWizard(ids, latestMandate) || (inWizard && latestMandate === undefined);
   const showWizard = !!setup && setup.step !== 4 && (ids.length === 0 || selected === latest) && wanted;
   useEffect(() => setInWizard(showWizard), [showWizard]);
+
+  const picker = ids.length > 1 && (
+    <select aria-label="Mandate" className="field" value={selected?.toString() ?? ""} onChange={(e) => setPicked(BigInt(e.target.value))}>
+      {ids.map((id) => (
+        <option key={id.toString()} value={id.toString()}>
+          Mandate {id.toString()}
+        </option>
+      ))}
+    </select>
+  );
 
   return (
     <main>
@@ -54,18 +67,33 @@ export function Workspace() {
           ) : mandates.isError ? (
             <Notice tone="error">The chain did not answer. Retrying.</Notice>
           ) : showWizard ? (
-            <SetupWizard owner={owner} state={{ usd: usd.data!, mandates: ids, balance: latest === null ? null : latestBalance }} />
+            <>
+              {picker}
+              <SetupWizard owner={owner} state={{ usd: usd.data!, mandates: ids, balance: latest === null ? null : latestBalance }} />
+            </>
+          ) : creating ? (
+            <Card className="p-6">
+              <div className="mb-4 flex items-center justify-between">
+                <span className="text-lg font-bold tracking-[-0.02em]">New mandate</span>
+                <button type="button" className="text-[13px] text-muted hover:text-text" onClick={() => setCreating(false)}>
+                  Cancel
+                </button>
+              </div>
+              <MandateCreate
+                onCreated={() => {
+                  setCreating(false);
+                  setPicked(null);
+                }}
+              />
+            </Card>
           ) : mandate ? (
             <>
-              {ids.length > 1 && (
-                <select aria-label="Mandate" className="field" value={selected?.toString() ?? ""} onChange={(e) => setPicked(BigInt(e.target.value))}>
-                  {ids.map((id) => (
-                    <option key={id.toString()} value={id.toString()}>
-                      Mandate {id.toString()}
-                    </option>
-                  ))}
-                </select>
-              )}
+              <div className="flex gap-2">
+                {picker}
+                <Button size="sm" className={ids.length > 1 ? "!h-auto" : "ml-auto"} onClick={() => setCreating(true)}>
+                  New mandate
+                </Button>
+              </div>
               <MandateCard key={`card-${mandate.id}`} mandate={mandate} walletBalance={usd.data} />
               <Rules key={`rules-${mandate.id}`} mandate={mandate} />
             </>
