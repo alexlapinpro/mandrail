@@ -58,4 +58,9 @@ Today one attester relays both sources to testnet, which is a trust assumption. 
 
 ## Team and contacts
 
-Filled in on the HackQuest submission.
+| | |
+|---|---|
+| Team | Alex Lapin, solo builder |
+| Telegram | [@alexlapin7](https://t.me/alexlapin7) |
+| Email | cryptoprosto50@gmail.com |
+| Background | Former product lead at the Latoken exchange. Built at ETH Bishkek 2025 and Solana Decentrathon 2025 |
