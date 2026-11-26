@@ -1,5 +1,11 @@
-import { Workspace } from "@/components/Workspace";
+import { Landing } from "@/components/landing/Landing";
+import { SiteNav } from "@/components/SiteNav";
 
 export default function Home() {
-  return <Workspace />;
+  return (
+    <>
+      <SiteNav />
+      <Landing />
+    </>
+  );
 }

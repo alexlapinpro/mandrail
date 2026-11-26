@@ -15,3 +15,13 @@ export function setupSteps({ usd, mandates, balance }: { usd: bigint; mandates: 
   if (!hasUsd && (!created || balance !== null)) return { step: 1, done: [false, created, false] };
   return { step: created ? 3 : 2, done: [true, created, false] };
 }
+
+/** The wizard is for new owners: no mandate yet, or a new active one that has never been funded or traded. */
+export function needsWizard(
+  mandates: readonly bigint[],
+  latest: { active: boolean; balance: bigint; periodStart: bigint } | undefined,
+): boolean {
+  if (mandates.length === 0) return true;
+  if (!latest) return false;
+  return latest.active && latest.balance === 0n && latest.periodStart === 0n;
+}

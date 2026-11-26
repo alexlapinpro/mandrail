@@ -76,3 +76,15 @@ describe("overview", () => {
     expect(overview(rows, 10_000).latest).toBe(rows[1]);
   });
 });
+
+import { needsWizard } from "./setupSteps";
+
+describe("needsWizard", () => {
+  const fresh = { active: true, balance: 0n, periodStart: 0n };
+  it("shows the wizard to an owner with no mandates", () => expect(needsWizard([], undefined)).toBe(true));
+  it("waits while the latest mandate is loading", () => expect(needsWizard([1n], undefined)).toBe(false));
+  it("shows it for a new, unfunded, active mandate", () => expect(needsWizard([1n], fresh)).toBe(true));
+  it("hides it for a funded mandate", () => expect(needsWizard([1n], { ...fresh, balance: 1n })).toBe(false));
+  it("hides it for a revoked mandate", () => expect(needsWizard([1n], { ...fresh, active: false })).toBe(false));
+  it("hides it for a mandate that has traded and was emptied", () => expect(needsWizard([1n], { ...fresh, periodStart: 5n })).toBe(false));
+});

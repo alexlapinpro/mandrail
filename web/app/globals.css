@@ -2,48 +2,93 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Road-sign palette: steel at night, one yellow, and the three signal colours. */
+/* Graphite with a green cast, one yellow accent and three signal colours. */
 :root {
-  --steel: 20 33 43;
-  --plate: 28 45 58;
-  --sunken: 15 26 34;
-  --seam: 52 75 92;
-  --paint: 236 241 244;
-  --muted: 163 183 196;
+  --bg: 11 21 24;
+  --panel: 16 29 33;
+  --raised: 22 42 47;
+  --line: 32 54 61;
+  --line2: 43 72 81;
+  --text: 234 242 243;
+  --muted: 134 160 168;
+  --faint: 93 122 131;
   --signal: 240 185 11;
-  --pass: 84 201 143;
-  --stop: 255 118 104;
-  --caution: 255 160 72;
+  --pass: 47 211 138;
+  --stop: 246 70 93;
+  --caution: 255 138 61;
   color-scheme: dark;
 }
 
-body {
-  @apply bg-steel font-sans text-[15px] leading-normal text-paint antialiased;
-  font-variant-numeric: tabular-nums;
+html {
+  background: rgb(var(--bg));
 }
-
+body {
+  background: rgb(var(--bg));
+  color: rgb(var(--text));
+  font: 15px/1.5 var(--font-sans), system-ui, sans-serif;
+  font-optical-sizing: auto;
+  -webkit-font-smoothing: antialiased;
+}
 :focus-visible {
   outline: 2px solid rgb(var(--signal));
   outline-offset: 2px;
 }
 
 @layer components {
+  .mono {
+    font-family: var(--font-mono), ui-monospace, monospace;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.01em;
+  }
+  .card {
+    @apply rounded-2xl border border-line bg-panel;
+  }
+  .card-head {
+    @apply flex items-center justify-between gap-3 border-b border-line px-[18px] py-3.5;
+  }
+  .card-head h2,
+  .card-head h3 {
+    @apply text-[15px] font-bold tracking-[-0.01em];
+  }
+  .cap {
+    @apply text-[11.5px] font-medium text-faint;
+  }
   .field {
-    @apply w-full rounded-sm border border-seam bg-sunken px-2.5 py-1.5 text-paint placeholder:text-muted/60 disabled:opacity-50;
+    @apply w-full rounded-[10px] border border-line2 bg-bg px-3 py-2 text-text placeholder:text-faint disabled:opacity-50;
+  }
+  .live-dot {
+    @apply inline-block h-[7px] w-[7px] rounded-full bg-current;
+    box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 22%, transparent);
+  }
+  .grid-bg {
+    background-image: linear-gradient(rgb(var(--line)) 1px, transparent 1px),
+      linear-gradient(90deg, rgb(var(--line)) 1px, transparent 1px);
+    background-size: 48px 48px;
+    mask-image: radial-gradient(ellipse at 70% 30%, #000 10%, transparent 65%);
   }
 }
 
-/* The posts light up once, in the order the guard checks them. */
+/* The rail lights up once, post by post, in the order the guard checks. */
 @keyframes post-in {
   from {
-    opacity: 0.15;
+    opacity: 0.2;
+    transform: translateY(3px);
   }
 }
 .post {
-  animation: post-in 240ms ease-out backwards;
+  animation: post-in 260ms ease-out backwards;
+}
+@keyframes ticker {
+  to {
+    transform: translateX(-50%);
+  }
+}
+.ticker-track {
+  animation: ticker 60s linear infinite;
 }
 @media (prefers-reduced-motion: reduce) {
-  .post {
+  .post,
+  .ticker-track {
     animation: none;
   }
 }

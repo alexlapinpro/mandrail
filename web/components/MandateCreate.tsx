@@ -99,7 +99,7 @@ export function MandateCreate({ onCreated }: { onCreated: () => void }) {
         <input type="checkbox" className="accent-signal" checked={form.requireMarketOpen} onChange={(e) => set("requireMarketOpen", e.target.checked)} />
         Stock tokens only while the US market is open
       </label>
-      <Button tone="signal" type="submit" disabled={!!tx.busy} className="w-full">
+      <Button tone="primary" type="submit" disabled={!!tx.busy} className="w-full">
         {tx.busy ? "Waiting for wallet" : "Create mandate"}
       </Button>
       {tx.error && (

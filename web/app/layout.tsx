@@ -1,26 +1,22 @@
 import type { Metadata } from "next";
-import { Barlow, Barlow_Condensed } from "next/font/google";
+import { Bricolage_Grotesque, JetBrains_Mono } from "next/font/google";
 import type { ReactNode } from "react";
-import { Header } from "@/components/Header";
 import { Providers } from "@/components/Providers";
 import "./globals.css";
 
-const barlow = Barlow({ subsets: ["latin"], weight: ["400", "500", "600"], variable: "--font-barlow" });
-const sign = Barlow_Condensed({ subsets: ["latin"], weight: ["500", "600"], variable: "--font-sign" });
+const sans = Bricolage_Grotesque({ subsets: ["latin"], weight: ["400", "500", "600", "700", "800"], variable: "--font-sans" });
+const mono = JetBrains_Mono({ subsets: ["latin"], weight: ["400", "500", "600"], variable: "--font-mono" });
 
 export const metadata: Metadata = {
-  title: "Mandrail",
-  description: "On-chain guard for AI agents that trade tokenized real-world assets. Testnet demo with test assets.",
+  title: "Mandrail: rules for AI agents, enforced on BNB Chain",
+  description: "Every trade an AI agent attempts on tokenized gold and stocks is checked on-chain against the owner's mandate and live prices from CoinMarketCap and Atlas. Testnet demo with test assets.",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" className={`${barlow.variable} ${sign.variable}`}>
+    <html lang="en" className={`${sans.variable} ${mono.variable}`}>
       <body>
-        <Providers>
-          <Header />
-          {children}
-        </Providers>
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

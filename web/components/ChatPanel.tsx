@@ -10,7 +10,8 @@ import { MAX_ACCESS_SECONDS, buildAccessMessage } from "@/lib/accessMessage";
 import { deployment } from "@/lib/deployment";
 import { explainWalletError } from "@/lib/walletErrors";
 import { ChatBox } from "./ChatBox";
-import { Button, Notice, Panel, SignedBy } from "./ui";
+import { Icon } from "./icons";
+import { Button, Card, CardHead, Notice } from "./ui";
 
 const CHIPS = [
   "Buy $50 of gold.",
@@ -51,23 +52,38 @@ export function ChatPanel({ owner, mandateId }: { owner: Address | undefined; ma
       <p className="text-muted">Create a mandate first. The chat opens for its owner.</p>
     ) : open ? undefined : (
       <div className="space-y-2">
-        <Button tone="signal" disabled={signing} onClick={sign}>{signing ? "Waiting for wallet" : "Sign to chat"}</Button>
-        <p className="text-sm text-muted">One free signature proves you own mandate {mandateId.toString()}. It lasts an hour and moves no money.</p>
+        <Button tone="primary" className="w-full" disabled={signing} onClick={sign}>{signing ? "Waiting for wallet" : "Sign to chat"}</Button>
+        <p className="text-center text-[13px] text-muted">One free signature proves you own mandate {mandateId.toString()}. It lasts an hour and moves no money.</p>
         {error && <Notice tone="error">{error}</Notice>}
       </div>
     );
 
   return (
-    <Panel title="Your agent" aside={<SignedBy who="agent" />}>
+    <Card className="flex min-h-[560px] flex-col">
+      <CardHead
+        title={
+          <>
+            <Icon name="bot" size={18} />
+            Agent
+          </>
+        }
+        aside={<span className="cap mono">signs its own trades · cannot withdraw</span>}
+      />
       <ChatBox
         chips={CHIPS}
-        empty="The agent trades with its own key and can only go through the guard. Ask it to buy something, also something your rules forbid: every attempt is checked and recorded on-chain."
+        empty={
+          <div className="max-w-[46ch]">
+            <Icon name="bot" size={36} className="mx-auto mb-3 text-faint" />
+            <p className="text-lg font-bold tracking-[-0.02em] text-text">Ask it to buy something</p>
+            <p className="mt-1">Also something your rules forbid. Every attempt goes through the guard and is recorded on-chain.</p>
+          </div>
+        }
         disabled={gate}
         send={(messages) =>
           postJson<ChatReply>("/api/chat", { mandateId: mandateId!.toString(), expires: pass!.expires, signature: pass!.signature, messages })
         }
         onReply={() => void queryClient.invalidateQueries()}
       />
-    </Panel>
+    </Card>
   );
 }

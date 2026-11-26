@@ -7,18 +7,23 @@ export default {
   theme: {
     extend: {
       colors: {
-        steel: token("steel"),
-        plate: token("plate"),
-        sunken: token("sunken"),
-        seam: token("seam"),
-        paint: token("paint"),
+        bg: token("bg"),
+        panel: token("panel"),
+        raised: token("raised"),
+        line: token("line"),
+        line2: token("line2"),
+        text: token("text"),
         muted: token("muted"),
+        faint: token("faint"),
         signal: token("signal"),
         pass: token("pass"),
         stop: token("stop"),
         caution: token("caution"),
       },
-      fontFamily: { sans: ["var(--font-barlow)", "system-ui", "sans-serif"], sign: ["var(--font-sign)", "var(--font-barlow)", "sans-serif"] },
+      fontFamily: {
+        sans: ["var(--font-sans)", "system-ui", "sans-serif"],
+        mono: ["var(--font-mono)", "ui-monospace", "monospace"],
+      },
     },
   },
 } satisfies Config;
