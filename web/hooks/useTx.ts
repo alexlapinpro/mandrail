@@ -2,6 +2,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useAccount, usePublicClient, useWriteContract } from "wagmi";
 import { bscTestnet } from "wagmi/chains";
+import { pendingChanges } from "@/lib/pendingChanges";
 import { txFailure } from "@/lib/txFailure";
 
 type Call = Parameters<ReturnType<typeof useWriteContract>["writeContractAsync"]>[0];
@@ -25,6 +26,7 @@ export function useTx() {
   async function run(label: string, done: string, ...calls: Call[]): Promise<boolean> {
     if (!client || state.busy) return false;
     setState({ busy: label, error: null, done: null, hash: null });
+    const end = pendingChanges.start();
     let hash: string | undefined;
     let reverted = false;
     let stepsDone = 0;
@@ -53,10 +55,12 @@ export function useTx() {
         stepsDone++;
       }
       await queryClient.invalidateQueries();
+      end();
       setState({ busy: null, error: null, done, hash: null });
       return true;
     } catch (error) {
       await queryClient.invalidateQueries();
+      end();
       const failure = txFailure({ error, hash, reverted, stepsDone, now: Math.floor(Date.now() / 1000) });
       setState({ busy: null, error: failure.text, done: null, hash: failure.hash ?? null });
       return false;

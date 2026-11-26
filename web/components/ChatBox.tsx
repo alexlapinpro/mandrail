@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { Action } from "@/lib/agent/run";
 import type { ChatReply } from "@/hooks/useApi";
+import { usePendingChanges } from "@/lib/pendingChanges";
 import { chatPayload } from "@/lib/chatPayload";
 import { chatFailure } from "@/lib/chatFailure";
 import { ActionCard } from "./ActionCard";
@@ -28,6 +29,7 @@ export function ChatBox({ send, chips, empty, disabled, onReply }: Props) {
   const [turns, setTurns] = useState<Turn[]>([]);
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
+  const waiting = usePendingChanges() > 0;
   const [error, setError] = useState<string | null>(null);
   const end = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -36,7 +38,7 @@ export function ChatBox({ send, chips, empty, disabled, onReply }: Props) {
 
   const submit = async () => {
     const content = text.trim();
-    if (!content || busy || disabled) return;
+    if (!content || busy || waiting || disabled) return;
     const next: Turn[] = [...turns, { role: "user", content }];
     setTurns(next);
     setText("");
@@ -76,6 +78,7 @@ export function ChatBox({ send, chips, empty, disabled, onReply }: Props) {
         <div ref={end} />
       </div>
       {error && <Notice tone="error">{error}</Notice>}
+      {waiting && !disabled && <Notice tone="info">Waiting for your wallet change to be confirmed, so the agent trades under the new rules.</Notice>}
       <div className="flex flex-wrap gap-2">
         {chips.map((chip) => (
           <button
@@ -98,7 +101,7 @@ export function ChatBox({ send, chips, empty, disabled, onReply }: Props) {
           }}
         >
           <input aria-label="Message to the agent" className="field" maxLength={MAX} value={text} onChange={(e) => setText(e.target.value)} placeholder="Tell the agent what to buy" />
-          <Button tone="signal" type="submit" disabled={busy || !text.trim()}>{busy ? "Working" : "Send"}</Button>
+          <Button tone="signal" type="submit" disabled={busy || waiting || !text.trim()}>{busy ? "Working" : waiting ? "Waiting" : "Send"}</Button>
         </form>
       )}
     </div>
