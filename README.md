@@ -12,6 +12,10 @@ Built during BNB Bangkok Hackathon, 25–27 Nov 2026. BSC testnet (chainId 97).
 
 ![The agent's trade runs along 13 checks and stops where the guard blocked it](docs/screenshot.jpg)
 
+| Landing: the latest decision on-chain | Break my agent: an open challenge |
+|---|---|
+| ![Landing page with the latest on-chain decision and its 13 checks](docs/screenshot-landing.jpg) | ![The challenge page with an unguarded agent and the attempts the chain recorded](docs/screenshot-break.jpg) |
+
 ## The problem
 
 AI agents are starting to buy tokenized gold, stocks and funds for people. A wallet key gives an agent everything or nothing. Rules written into a prompt are not rules: a clever message can talk the model out of them. The owner needs limits that hold even when the agent is wrong, hacked or persuaded.

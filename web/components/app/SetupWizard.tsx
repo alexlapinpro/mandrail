@@ -61,8 +61,10 @@ export function SetupWizard({ owner, state }: { owner: Address; state: State }) 
     const at = setupSteps(current).step;
     if (at === 1) return tx.run("faucet", "1,000 test USD added.", { address: deployment.usd, abi: testUSDAbi, functionName: "faucet" });
     if (at === 2) {
+      // The agent address may still be loading when the owner clicks Start, so wait for it.
+      const agentAddress = agent.data?.agent ?? (await agent.refetch()).data?.agent ?? "";
       const result = toParams(
-        { ...DEFAULT_FORM, agent: agent.data?.agent ?? "", identityId: deployment.agentIdentityId ? String(deployment.agentIdentityId) : "" },
+        { ...DEFAULT_FORM, agent: agentAddress, identityId: deployment.agentIdentityId ? String(deployment.agentIdentityId) : "" },
         Math.floor(Date.now() / 1000),
       );
       if (!result.ok) {
