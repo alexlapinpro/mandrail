@@ -62,7 +62,12 @@ export function stats(rows: readonly ChallengeRow[], mandate: ChallengeMandate):
   return result;
 }
 
-/** The proxy appends the address it saw, so only the last hop is trustworthy. The header can be changed for a host. */
+/**
+ * The visitor's address, for rate limits. By default the last x-forwarded-for hop, which the visitor cannot fake.
+ * Railway's edge appends its own address there, but sets X-Real-IP from the connection and drops what the visitor
+ * sends (checked on 26 Nov 2026). CLIENT_IP_HEADER overrides both.
+ */
 export function clientIp(headers: Headers): string {
-  return headers.get(process.env.CLIENT_IP_HEADER || "x-forwarded-for")?.split(",").at(-1)?.trim() || "unknown";
+  const header = process.env.CLIENT_IP_HEADER || (process.env.RAILWAY_ENVIRONMENT ? "x-real-ip" : "x-forwarded-for");
+  return headers.get(header)?.split(",").at(-1)?.trim() || "unknown";
 }

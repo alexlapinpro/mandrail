@@ -67,5 +67,17 @@ describe("clientIp", () => {
     expect(ip({ "x-forwarded-for": "9.9.9.9", "x-real-ip": "1.2.3.4" })).toBe("1.2.3.4");
     delete process.env.CLIENT_IP_HEADER;
   });
+  it("on Railway uses X-Real-IP: the last forwarded hop is Railway's own edge there", () => {
+    process.env.RAILWAY_ENVIRONMENT = "production";
+    expect(ip({ "x-forwarded-for": "203.0.113.7, 152.233.15.120", "x-real-ip": "203.0.113.7" })).toBe("203.0.113.7");
+    delete process.env.RAILWAY_ENVIRONMENT;
+  });
+  it("an explicit header still wins on Railway", () => {
+    process.env.RAILWAY_ENVIRONMENT = "production";
+    process.env.CLIENT_IP_HEADER = "x-forwarded-for";
+    expect(ip({ "x-forwarded-for": "203.0.113.7, 152.233.15.120", "x-real-ip": "203.0.113.7" })).toBe("152.233.15.120");
+    delete process.env.RAILWAY_ENVIRONMENT;
+    delete process.env.CLIENT_IP_HEADER;
+  });
   it("falls back to one shared bucket", () => expect(ip({})).toBe("unknown"));
 });
