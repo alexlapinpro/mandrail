@@ -88,6 +88,7 @@ pnpm dev
 | `pnpm test` | App tests. Some start a local chain with the real contracts |
 | `pnpm contracts:test` | Contract tests, including fuzzing |
 | `pnpm scenarios` | Runs the demo story on testnet through the real agent |
+| `pnpm rehearsal` | Owner rehearsal with no private key: forks testnet, starts the app, checks all 8 decisions through its API |
 | `pnpm attacks` | Runs ten attacks on the challenge agent |
 | `pnpm contracts:verify` | Verifies the contracts on BscScan |
 | `pnpm register-agent` | Registers the agent in the ERC-8004 registry, once. After a redeploy set `agentIdentityId` again instead |

@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit",
     "attester": "tsx --tsconfig tsconfig.scripts.json scripts/attester.ts",
     "scenarios": "tsx --tsconfig tsconfig.scripts.json scripts/scenarios.ts",
+    "rehearsal": "tsx --tsconfig tsconfig.scripts.json scripts/rehearsal.ts",
     "export-abi": "tsx scripts/export-abi.ts",
     "register-agent": "tsx --tsconfig tsconfig.scripts.json scripts/register-agent.ts",
     "attacks": "tsx --tsconfig tsconfig.scripts.json scripts/attacks.ts"

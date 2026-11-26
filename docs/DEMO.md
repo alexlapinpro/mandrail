@@ -54,7 +54,7 @@ The model provider filters some wordings such as "ignore all rules". The page th
 
 - **Market hours**: tick "Stock tokens only while the US market is open", remove both breakers, jurisdiction SG, buy tEQUITY. Outside 14:30 to 21:00 UTC, at weekends and on US holidays it is blocked. 26 Nov 2026 is a holiday, on 27 Nov the market closes at 18:00 UTC.
 - **Agent identity**: create a mandate with another ERC-8004 id. The registry says it belongs to another wallet and the contract refuses.
-- **The same without the UI**: `pnpm scenarios` and `pnpm attacks`.
+- **The same without the UI**: `pnpm scenarios` and `pnpm attacks`. `pnpm rehearsal` checks all 8 decisions on a local fork without any key.
 
 ## Recording the video
 
