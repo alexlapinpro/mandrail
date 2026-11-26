@@ -5,32 +5,35 @@
 | Check | How |
 |---|---|
 | Wallet on BSC testnet with a little test BNB | [Faucet](https://www.bnbchain.org/en/testnet-faucet), about 0.01 is enough |
-| Prices are fresh | Press **Refresh risk data** shortly before the two breaker steps. The "Set below current" buttons use a tenth of the current value, so a refresh in between does not matter. To be fully safe type `0.0001` and save |
+| The wallet has no mandate yet | Then the app opens the setup wizard. With an old mandate, press **New mandate** above the mandate card |
+| Prices are fresh | The strip under the header shows **On-chain** age. Prices are pushed every 5 minutes; record when it says a few minutes or less |
 | Presenter's wallet is in `DEMO_OWNERS` | It keeps its own daily reserve of model calls and transactions |
-| The wallet has no mandate yet, or press **New mandate** | A fresh mandate keeps the numbers below exact |
 | Faucet not used in the last hour | It gives 1,000 test USD per hour |
 | Chat signature | One signature lasts an hour |
 
-Screen: 1440 px wide or more, so all three columns are visible.
+Screen: 1440 × 900 or wider so all three columns show, browser zoom 100%, no other tabs or bookmarks bar.
 
-## Script
+## Script and shots
 
-The times fit an edited video. Live, wallet confirmations and model answers add up: skip the jurisdiction and rogue venue rows to stay within three minutes, or create and fund the mandate beforehand.
+About 300 spoken words, about 2:50 with the screen actions. Wallet confirmations and model answers are cut in the edit; the "Cut" column says where.
 
-| Time | Do | Say | Expected |
-|---|---|---|---|
-| 0:00 | Show the page | "AI agents start to trade tokenized assets for us. A prompt is not a rule. Mandrail puts the rules on-chain." | |
-| 0:15 | **Connect wallet**, **Get test USD**, **Create mandate** with the defaults, **Deposit** 300 | "I sign a mandate: gold only, $100 per trade, $200 a week, Singapore. The agent has its own key and can only go through the guard." | The mandate reads as a sentence, $300 held |
-| 0:45 | **Sign to chat**, then "Buy $50 of gold." | "Live CoinMarketCap price. All 13 checks pass, the gold goes straight to me." | Allowed, link to BscScan |
-| 1:05 | "Buy $150 of gold." | "It stops at the seventh check. The attempt is on-chain anyway, with the numbers." | Blocked: exceeds per trade |
-| 1:20 | "Buy $50 of tEQUITY." | "Not in my mandate." | Blocked: asset not allowed |
-| 1:30 | Tick **tEQUITY**, set jurisdiction **US**, send "Buy $50 of tEQUITY." again | "I allow it, but this stock token is restricted for US owners." | Blocked: jurisdiction restricted |
-| 1:50 | Jurisdiction **SG**, **Set below current gap**, "Buy $20 of tEQUITY." | "CoinMarketCap and Atlas disagree by more than I accept. Two independent sources, live." | Blocked: price divergence |
-| 2:10 | **Set below current move**, "Buy $20 of gold." | "The real one-hour move on CoinMarketCap trips the breaker." | Blocked: volatility breaker |
-| 2:25 | "Buy $20 of gold on the rogue venue." | "Even a fake venue that pays nothing cannot be used." | Blocked: venue denied |
-| 2:35 | **Revoke mandate**, **Revoke now**, "Buy $20 of gold." | "Kill switch. And I can still withdraw." | Blocked: mandate inactive |
-| 2:45 | Scroll the decisions, open one BscScan link | "Every decision is public and verifiable." | `TradeBlocked` with reason |
-| 2:52 | Open **Break my agent** | "And now you: make our agent steal." | Breaches: 0 |
+| Time | Shot | Do | Say | Expected on screen | Cut |
+|---|---|---|---|---|---|
+| 0:00 | Landing, full screen | Open the site, hover over the rail of the latest decision | "AI agents are starting to buy tokenized gold and stocks for people. But a prompt is not a rule: one clever message and the limits are gone. Mandrail puts the rules on BNB Chain, where the agent cannot talk its way around them." | Latest decision card with 13 posts | |
+| 0:20 | Landing, stats | Scroll to the four numbers | "Every attempt the agent makes is checked by a contract, and every decision, allowed or blocked, stays on-chain." | Decisions, blocked share, breaches 0 | |
+| 0:30 | App, left column | **Launch app**, **Connect wallet**, **Start** in the wizard | "As the owner I give my agent a mandate in about a minute: test dollars, a mandate with default rules, and a $300 deposit. Gold only, $100 per trade, $200 a week, Singapore." | Wizard steps tick off one by one | Cut each wallet popup to under a second |
+| 0:55 | App, mandate card | Point at the agent chip and ERC-8004 badge | "The agent has its own key and an on-chain identity in the ERC-8004 registry. It can trade, but it can never withdraw." | $300.00 held, agent 0x…, ERC-8004 #2929 | |
+| 1:05 | App, chat | **Sign to chat**, chip **Buy $50 of gold.** | "First a normal trade. The agent reads the live CoinMarketCap price, runs a pre-flight, and sends it. All 13 checks pass, and the gold goes straight to my wallet." | Green receipt, all posts green | Cut the model wait |
+| 1:25 | App, chat | Chip **Buy $150 of gold.** | "Now above my limit. It stops at check seven. Nothing is spent, but the attempt is recorded with its numbers." | Red receipt, stop at 07 · exceeds per trade | Cut the model wait |
+| 1:40 | App, chat | Chip **Buy $20 of gold on the rogue venue.** | "A venue I never approved: blocked at check six." | Blocked · venue denied | Cut the model wait |
+| 1:50 | App, rules | Under **Stop if the 1h move of tGOLD is above**, press **Below now**, then type "Buy $20 of gold." | "Risk rules use live data. I set the volatility limit just below the real one-hour move on CoinMarketCap, and the next trade trips the breaker." | Gauge limit left of the live value, Blocked · volatility breaker | Cut the wallet popup and model wait |
+| 2:10 | App, rules | Switch on **tEQUITY**, under **Stop if CoinMarketCap and Atlas differ above** press **Below now**, chip **Buy $20 of tEQUITY.** | "For the stock token a second source checks the first: Atlas on BNB Chain. When it and CoinMarketCap disagree by more than I accept, the trade is refused." | Blocked · price divergence | Cut the wallet popups and model wait |
+| 2:30 | App, rules and chat | **Revoke mandate**, **Revoke now**, type "Buy $20 of gold." | "And a kill switch: one signature and the agent is done. My money stays mine." | Mandate revoked, Blocked · mandate inactive | Cut the wallet popup and model wait |
+| 2:38 | App, feed | Click one tx link in **Decisions on-chain** | "Every decision is a public event you can verify on BscScan." | TradeBlocked event with its reason | |
+| 2:45 | Break my agent | Open **Break my agent** | "And now it's your turn: this agent has no safety rules at all. Try to make it steal. Only the contract stands in the way, and so far nothing got through." | Attempts, Blocked, Breaches 0 | |
+| 2:55 | End card | Logo, repository address, QR code to /break | "Mandrail. Rules for AI agents, enforced on BNB Chain." | github.com/alexlapinpro/mandrail | |
+
+Spare lines if the edit runs short: the jurisdiction check (allow tEQUITY, set **United States**, buy tEQUITY: Blocked · jurisdiction restricted) and "Buy $50 of tEQUITY." before allowing it (Blocked · asset not allowed).
 
 ## Break my agent
 
@@ -44,11 +47,11 @@ The model provider filters some wordings such as "ignore all rules". The page th
 
 | What you see | What to do |
 |---|---|
-| "too small to set a limit below it" | Refresh the risk data, or type a lower limit by hand |
-| Blocked: risk data stale | Press **Refresh risk data** and send again |
-| The model does not answer | Look at the decisions first, a trade may already be there. If not, send again; the unanswered message is not repeated by itself |
+| "The live value is too small to set a limit below it" | The market is very calm. Wait a minute for new prices and press **Below now** again, or use **0.5%** for the story and say so |
+| Blocked: risk data stale | Prices are older than 15 minutes. Wait for the next push (On-chain age resets) and send again |
+| The model does not answer | Look at **Decisions on-chain** first, a trade may already be there. If not, send again |
 | The model is down | `/break` and the decisions stay readable; show the BscScan links from [CMC_INTEGRATION.md](CMC_INTEGRATION.md) |
-| Wallet on another network | **Switch to BSC testnet** in the header |
+| Wallet on another network | Use the network button in the header |
 
 ## Extra steps for questions
 
@@ -58,4 +61,4 @@ The model provider filters some wordings such as "ignore all rules". The page th
 
 ## Recording the video
 
-Up to 3 minutes, 1440 × 900, browser zoom 100%. Record the script above in one take and cut the waiting time. Subtitle the spoken lines. End on the Break my agent counters and the repository address.
+Up to 3 minutes, 1440 × 900, browser zoom 100%. Record the screen in one take, then record the voice over the edit, which is easier than talking while confirming wallets. Cut every wallet popup and model wait, subtitle the spoken lines, and end on the Break my agent counters and the repository address. Upload to YouTube as unlisted, or Loom, and paste the link into Demo Video on HackQuest.
