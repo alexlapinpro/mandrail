@@ -97,7 +97,7 @@ pnpm dev
 | `pnpm contracts:verify` | Verifies the contracts on BscScan |
 | `pnpm register-agent` | Registers the agent in the ERC-8004 registry, once. After a redeploy set `agentIdentityId` again instead |
 
-Checked on 26 Nov 2026: 337 app tests, 112 contract tests, 2 tests against the live Atlas feeds on a mainnet fork. Line and branch coverage of `PolicyGuard` is 100%.
+Checked on 27 Nov 2026: 375 app tests, 112 contract tests, 2 tests against the live Atlas feeds on a mainnet fork. Line and branch coverage of `PolicyGuard` is 100%.
 
 ## Documentation
 
